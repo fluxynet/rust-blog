@@ -1,15 +1,15 @@
 services:
-  custom_service:
-    build:
-      context: .
-      dockerfile: .local/Dockerfile
-    environment:
-      PORT: 8080
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./src:/app/src
-    command: ["cargo", "run", "--release"]
+  # custom_service:
+  #   build:
+  #     context: .
+  #     dockerfile: .local/Dockerfile
+  #   environment:
+  #     PORT: 8080
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./src:/app/src
+  #   command: ["cargo", "run", "--release"]
 
   postgres:
     image: postgres:17

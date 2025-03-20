@@ -1,3 +1,4 @@
+use actix_web::{App, HttpMessage, HttpResponse, HttpServer, Responder, cookie::Cookie, get, web};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
@@ -25,6 +26,22 @@ pub enum AuthError {
 
     #[error("session not found")]
     NotFound,
+}
+
+impl AuthError {
+    fn to_http_response(&self) -> HttpResponse {
+        match self {
+            AuthError::InitializationError(msg) => {
+                HttpResponse::InternalServerError().body(msg.clone())
+            }
+            AuthError::ConnectionError(msg) => {
+                HttpResponse::InternalServerError().body(msg.clone())
+            }
+            AuthError::SerializationError(msg) => HttpResponse::BadRequest().body(msg.clone()),
+            AuthError::PermissionDenied(msg) => HttpResponse::Forbidden().body(msg.clone()),
+            AuthError::NotFound => HttpResponse::NotFound().body("Session not found".to_string()),
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -144,7 +161,7 @@ impl Repo for RedisRepo {
 
 #[automock]
 #[async_trait]
-pub trait Authenticator {
+pub trait Authenticator: Sync + Send {
     async fn start_login(&self) -> Result<String, AuthError>;
     async fn login(&self, code: String) -> Result<Session, AuthError>;
 }
@@ -155,6 +172,7 @@ pub struct GithubAuthenticator {
     client_secret: String,
     url: String,
     api_url: String,
+    base_url: String,
     repo: Arc<dyn Repo>,
 }
 
@@ -164,6 +182,7 @@ impl GithubAuthenticator {
         client_id: String,
         client_secret: String,
         org: String,
+        base_url: String,
     ) -> Result<Self, AuthError> {
         let url = "https://github.com".to_string();
         let api_url = "https://api.github.com".to_string();
@@ -193,6 +212,7 @@ impl GithubAuthenticator {
             url,
             api_url,
             repo,
+            base_url,
         })
     }
 
@@ -202,8 +222,9 @@ impl GithubAuthenticator {
         client_id: String,
         client_secret: String,
         org: String,
+        base_url: String,
     ) -> Result<(mockito::ServerGuard, Self), AuthError> {
-        let mut auth = GithubAuthenticator::new(repo, client_id, client_secret, org)?;
+        let mut auth = GithubAuthenticator::new(repo, client_id, client_secret, org, base_url)?;
 
         let server = mockito::Server::new_async().await;
 
@@ -214,6 +235,16 @@ impl GithubAuthenticator {
 
         Ok((server, auth))
     }
+}
+
+#[derive(Deserialize)]
+struct GithubAccessToken {
+    #[serde(default)]
+    access_token: String,
+    #[serde(default)]
+    error: String,
+    #[serde(default)]
+    error_description: String,
 }
 
 #[derive(Deserialize)]
@@ -235,8 +266,8 @@ struct GithubOrg {
 impl Authenticator for GithubAuthenticator {
     async fn start_login(&self) -> Result<String, AuthError> {
         let url = format!(
-            "{}/login/oauth/authorize?client_id={}&scope=read:user,read:org",
-            self.url, self.client_id
+            "{}/login/oauth/authorize?client_id={}&scope=read:user,read:org&redirect_uri={}/auth/login/callback",
+            self.url, self.client_id, self.base_url,
         );
 
         Ok(url)
@@ -250,51 +281,61 @@ impl Authenticator for GithubAuthenticator {
             ("code", &code),
         ];
 
-        let res = match client
+        let gh_token: GithubAccessToken = client
             .post(format!("{}/login/oauth/access_token", self.url))
             .header("Accept", "application/json")
             .form(&params)
             .send()
             .await
-        {
-            Ok(r) => r,
-            Err(err) => return Err(AuthError::ConnectionError(err.to_string())),
-        };
+            .map_err(|err| {
+                AuthError::ConnectionError(format!("getting access_token: {}", err.to_string()))
+            })?
+            .json()
+            .await
+            .map_err(|err| {
+                AuthError::SerializationError(format!("reading access_token: {}", err.to_string()))
+            })?;
 
-        if res.status() != 200 {
-            return Err(AuthError::ConnectionError(
-                format!("GitHub returned status code: {}", res.status()).to_string(),
+        if !gh_token.error.is_empty() {
+            return Err(AuthError::PermissionDenied(format!(
+                "{} ({})",
+                gh_token.error_description, gh_token.error
+            )));
+        }
+
+        if gh_token.access_token.is_empty() {
+            return Err(AuthError::PermissionDenied(
+                "access token is empty".to_string(),
             ));
         }
 
-        let res_json: serde_json::Value = res
-            .json()
-            .await
-            .map_err(|err| AuthError::SerializationError(err.to_string()))?;
-
-        let access_token = res_json["access_token"]
-            .as_str()
-            .ok_or_else(|| AuthError::SerializationError("obtaining access token".to_string()))?;
-
         let gh_user: GithubUser = client
             .get(format!("{}/user", self.api_url))
-            .header("Authorization", format!("token {}", access_token))
+            .header("Authorization", format!("token {}", gh_token.access_token))
+            .header("User-Agent", "finblog")
             .send()
             .await
-            .map_err(|err| AuthError::ConnectionError(err.to_string()))?
+            .map_err(|err| {
+                AuthError::ConnectionError(format!("getting user: {}", err.to_string()))
+            })?
             .json()
             .await
-            .map_err(|err| AuthError::SerializationError(err.to_string()))?;
+            .map_err(|err| {
+                AuthError::SerializationError(format!("reading user: {}", err.to_string()))
+            })?;
 
         let gh_orgs: GithubOrgs = client
             .get(format!("{}/user/orgs", self.api_url))
-            .header("Authorization", format!("token {}", access_token))
+            .header("Authorization", format!("token {}", gh_token.access_token))
+            .header("User-Agent", "finblog")
             .send()
             .await
-            .map_err(|err| AuthError::ConnectionError(err.to_string()))?
+            .map_err(|err| AuthError::ConnectionError(format!("getting org: {}", err.to_string())))?
             .json()
             .await
-            .map_err(|err| AuthError::SerializationError(err.to_string()))?;
+            .map_err(|err| {
+                AuthError::SerializationError(format!("reading org: {}", err.to_string()))
+            })?;
 
         if !gh_orgs.0.iter().any(|org| org.login == self.org) {
             return Err(AuthError::PermissionDenied(
@@ -325,6 +366,7 @@ mod github_authenticator_test {
             "test_client_id".to_string(),
             "test_client_secret".to_string(),
             "test_org".to_string(),
+            "website.local".to_string(),
         )
         .unwrap();
 
@@ -349,6 +391,7 @@ mod github_authenticator_test {
             "test_client_id".to_string(),
             "test_client_secret".to_string(),
             "test_org".to_string(),
+            "website.local".to_string(),
         )
         .await
         .unwrap();
@@ -398,6 +441,7 @@ mod github_authenticator_test {
             "test_client_id".to_string(),
             "test_client_secret".to_string(),
             "test_org".to_string(),
+            "website.local".to_string(),
         )
         .await
         .unwrap();
@@ -433,6 +477,7 @@ mod github_authenticator_test {
             "test_client_id".to_string(),
             "test_client_secret".to_string(),
             "test_org".to_string(),
+            "website.local".to_string(),
         )
         .await
         .unwrap();
@@ -475,7 +520,7 @@ mod github_authenticator_test {
 
 #[automock]
 #[async_trait]
-pub trait SessionManager {
+pub trait SessionManager: Sync + Send {
     async fn session(&self, token: String) -> Result<User, AuthError>;
     async fn logout(&self, token: String) -> Result<(), AuthError>;
 }
@@ -578,4 +623,98 @@ mod default_session_manager_test {
             "connection error: Failed to delete"
         );
     }
+}
+
+struct HttpServerState {
+    sessions: Arc<dyn SessionManager>,
+    auth: Arc<dyn Authenticator>,
+    base_url: String,
+    cookie_name: String,
+}
+
+#[get("/auth/login")]
+async fn login(state: web::Data<HttpServerState>) -> impl Responder {
+    match state.auth.start_login().await {
+        Err(err) => err.to_http_response(),
+        Ok(url) => HttpResponse::Found()
+            .append_header(("Location", url))
+            .finish(),
+    }
+}
+
+#[derive(Deserialize)]
+struct LoginCallback {
+    code: String,
+}
+
+#[get("/auth/login/callback")]
+async fn login_callback(
+    state: web::Data<HttpServerState>,
+    query: web::Query<LoginCallback>,
+) -> impl Responder {
+    match state.auth.login(query.code.clone()).await {
+        Err(err) => err.to_http_response(),
+        Ok(session) => HttpResponse::Ok()
+            .cookie(
+                Cookie::build(state.cookie_name.clone(), session.token)
+                    .domain(state.base_url.clone())
+                    .path("/")
+                    .secure(true)
+                    .http_only(true)
+                    .finish(),
+            )
+            .append_header(("Location", state.base_url.clone()))
+            .finish(),
+    }
+}
+
+#[get("/auth/logout")]
+async fn logout(state: web::Data<HttpServerState>, req: actix_web::HttpRequest) -> impl Responder {
+    if let Some(cookie) = req.cookie("sid") {
+        match state.sessions.logout(cookie.value().to_string()).await {
+            Ok(_) => HttpResponse::Ok().finish(),
+            Err(err) => err.to_http_response(),
+        }
+    } else {
+        HttpResponse::Unauthorized().body("No session ID found in cookies")
+    }
+}
+
+#[get("/api/auth/me")]
+async fn me(state: web::Data<HttpServerState>, req: actix_web::HttpRequest) -> impl Responder {
+    if let Some(cookie) = req.cookie("sid") {
+        match state.sessions.session(cookie.value().to_string()).await {
+            Ok(user) => HttpResponse::Ok().json(user),
+            Err(err) => err.to_http_response(),
+        }
+    } else {
+        HttpResponse::Unauthorized().body("No session ID found in cookies")
+    }
+}
+
+pub async fn http_server(
+    sessions: Arc<dyn SessionManager>,
+    auth: Arc<dyn Authenticator>,
+    base_url: String,
+    cookie_name: String,
+    listen_addr: String,
+) -> Result<(), std::io::Error> {
+    let data = web::Data::new(HttpServerState {
+        sessions,
+        auth,
+        base_url,
+        cookie_name,
+    });
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(data.clone())
+            .service(login)
+            .service(login_callback)
+            .service(logout)
+            .service(me)
+    })
+    .bind(listen_addr)?
+    .run()
+    .await
 }
