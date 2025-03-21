@@ -5,6 +5,8 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  RowSelectionState,
+  Updater,
 } from "@tanstack/react-table"
 
 import {
@@ -16,19 +18,40 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-interface DataTableProps<TData, TValue> {
+import { useState } from "react"
+
+interface DataTableProps<TData extends { id: string }, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  selected?: RowSelectionState
+  onSelectChange?: (selection: RowSelectionState) => void
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends { id: string }, TValue>({
   columns,
   data,
+  selected,
+  onSelectChange,
 }: DataTableProps<TData, TValue>) {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>(selected?? {})
+
+  const onRowSelectionChange = (f: Updater<RowSelectionState>) => {
+    setRowSelection(f)
+
+    if (onSelectChange) {
+      onSelectChange(rowSelection);
+    }
+  }
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    onRowSelectionChange,
+    getRowId: (row) => row.id,
+    state: {
+      rowSelection,
+    }
   })
 
   return (

@@ -5,6 +5,8 @@ type Article = {
     content: string;
     updated_at: Date;
     created_at: Date;
+    deleted_at?: Date;
+    status: "published" | "draft";
     author: string;
 };
 
@@ -16,6 +18,7 @@ export const fakeArticles: Article[] = [
         content: 'TypeScript is a typed superset of JavaScript...',
         updated_at: new Date('2023-01-01T10:00:00Z'),
         created_at: new Date('2023-01-01T09:00:00Z'),
+        status: "draft",
         author: 'John Doe'
     },
     {
@@ -25,6 +28,7 @@ export const fakeArticles: Article[] = [
         content: 'React Hooks are functions that let you use state...',
         updated_at: new Date('2023-02-01T10:00:00Z'),
         created_at: new Date('2023-02-01T09:00:00Z'),
+        status: "draft",
         author: 'Jane Smith'
     },
     {
@@ -34,6 +38,7 @@ export const fakeArticles: Article[] = [
         content: 'JavaScript is a versatile language...',
         updated_at: new Date('2023-03-01T10:00:00Z'),
         created_at: new Date('2023-03-01T09:00:00Z'),
+        status: "published",
         author: 'Alice Johnson'
     },
     {
@@ -43,6 +48,7 @@ export const fakeArticles: Article[] = [
         content: 'CSS Grid Layout is a two-dimensional layout system...',
         updated_at: new Date('2023-04-01T10:00:00Z'),
         created_at: new Date('2023-04-01T09:00:00Z'),
+        status: "published",
         author: 'Bob Brown'
     },
     {
@@ -52,6 +58,7 @@ export const fakeArticles: Article[] = [
         content: 'Node.js is a powerful JavaScript runtime...',
         updated_at: new Date('2023-05-01T10:00:00Z'),
         created_at: new Date('2023-05-01T09:00:00Z'),
+        status: "published",
         author: 'Charlie Davis'
     },
     {
@@ -61,6 +68,7 @@ export const fakeArticles: Article[] = [
         content: 'GraphQL is a query language for APIs...',
         updated_at: new Date('2023-06-01T10:00:00Z'),
         created_at: new Date('2023-06-01T09:00:00Z'),
+        status: "published",
         author: 'Dana Evans'
     },
     {
@@ -70,6 +78,7 @@ export const fakeArticles: Article[] = [
         content: 'Vue.js is a progressive JavaScript framework...',
         updated_at: new Date('2023-07-01T10:00:00Z'),
         created_at: new Date('2023-07-01T09:00:00Z'),
+        status: "published",
         author: 'Eve Foster'
     },
     {
@@ -79,6 +88,8 @@ export const fakeArticles: Article[] = [
         content: 'Express is a minimal and flexible Node.js web application framework...',
         updated_at: new Date('2023-08-01T10:00:00Z'),
         created_at: new Date('2023-08-01T09:00:00Z'),
+        deleted_at: new Date('2023-08-01T09:00:00Z'),
+        status: "draft",
         author: 'Frank Green'
     },
     {
@@ -88,6 +99,8 @@ export const fakeArticles: Article[] = [
         content: 'Docker is a platform for developing, shipping, and running applications...',
         updated_at: new Date('2023-09-01T10:00:00Z'),
         created_at: new Date('2023-09-01T09:00:00Z'),
+        deleted_at: new Date('2023-09-01T09:00:00Z'),
+        status: "draft",
         author: 'Grace Hall'
     },
     {
@@ -97,6 +110,7 @@ export const fakeArticles: Article[] = [
         content: 'Kubernetes is an open-source system for automating deployment...',
         updated_at: new Date('2023-10-01T10:00:00Z'),
         created_at: new Date('2025-03-20T19:50:00Z'),
+        status: "draft",
         author: 'Henry Irving'
     }
 ];

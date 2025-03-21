@@ -8,7 +8,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { NavLink } from "react-router";
-import { useAuth } from "./services/auth";
+import { Button } from "./components/ui/button";
 
 function MenuItem({
   label,
@@ -20,12 +20,13 @@ function MenuItem({
   icon: React.ComponentType;
 }) {
   return (
-    <NavigationMenuLink href={href}>
-      <div className="flex items-center space-x-2">
-        <Icon />
-        <span>{label}</span>
-      </div>
-    </NavigationMenuLink>
+    <NavLink to={href}>
+      <NavigationMenuLink>
+        <Button variant="link">
+          <Icon/> {label}
+        </Button>
+      </NavigationMenuLink>
+    </NavLink>
   );
 }
 
@@ -74,7 +75,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Nav />
         </div>
         <div>
-            <User/>
+          <User />
         </div>
       </header>
       <div className="flex flex-1">
