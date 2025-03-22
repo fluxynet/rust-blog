@@ -21,8 +21,8 @@ function MenuItem({
 }) {
   return (
     <NavLink to={href}>
-      <NavigationMenuLink>
-        <Button variant="link">
+      <NavigationMenuLink asChild>
+        <Button variant="link" className="flex flex-row">
           <Icon/> {label}
         </Button>
       </NavigationMenuLink>
