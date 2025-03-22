@@ -1,4 +1,7 @@
 mod auth;
+mod blog;
+mod errors;
+mod web;
 
 use serde::Deserialize;
 use std::env;
@@ -67,10 +70,14 @@ fn help() {
 }
 
 async fn auth_service(config: &Config) -> std::io::Result<()> {
-    let repo = Arc::new(auth::RedisRepo::new(&config.auth.redis).await.unwrap());
+    let repo = Arc::new(
+        auth::redis::RedisRepo::new(&config.auth.redis)
+            .await
+            .unwrap(),
+    );
     let sessions = Arc::new(auth::DefaultSessionManager::new(repo.clone()));
     let authenticator = Arc::new(
-        auth::GithubAuthenticator::new(
+        auth::github::GithubAuthenticator::new(
             repo.clone(),
             config.auth.gh_client_id.clone(),
             config.auth.gh_client_secret.clone(),
