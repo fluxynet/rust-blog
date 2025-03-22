@@ -87,7 +87,7 @@ async fn auth_service(config: &Config) -> std::io::Result<()> {
         .unwrap(),
     );
 
-    auth::http_server(
+    auth::http::server(
         sessions,
         authenticator,
         config.base_url.clone(),

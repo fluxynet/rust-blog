@@ -1,5 +1,4 @@
 use crate::errors::Error;
-use actix_web::{App, HttpResponse, HttpServer, Responder, cookie::Cookie, get, web};
 use async_trait::async_trait;
 
 use mockall::predicate::*;
@@ -8,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 pub mod github;
+pub mod http;
 pub mod redis;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -142,98 +142,4 @@ mod default_session_manager_test {
             "connection error: Failed to delete"
         );
     }
-}
-
-struct HttpServerState {
-    sessions: Arc<dyn SessionManager>,
-    auth: Arc<dyn Authenticator>,
-    base_url: String,
-    cookie_name: String,
-}
-
-#[get("/auth/login")]
-async fn login(state: web::Data<HttpServerState>) -> impl Responder {
-    match state.auth.start_login().await {
-        Err(err) => err.to_http_response(),
-        Ok(url) => HttpResponse::Found()
-            .append_header(("Location", url))
-            .finish(),
-    }
-}
-
-#[derive(Deserialize)]
-struct LoginCallback {
-    code: String,
-}
-
-#[get("/auth/login/callback")]
-async fn login_callback(
-    state: web::Data<HttpServerState>,
-    query: web::Query<LoginCallback>,
-) -> impl Responder {
-    match state.auth.login(query.code.clone()).await {
-        Err(err) => err.to_http_response(),
-        Ok(session) => HttpResponse::Ok()
-            .cookie(
-                Cookie::build(state.cookie_name.clone(), session.token)
-                    .domain(state.base_url.clone())
-                    .path("/")
-                    .secure(true)
-                    .http_only(true)
-                    .finish(),
-            )
-            .append_header(("Location", state.base_url.clone()))
-            .finish(),
-    }
-}
-
-#[get("/auth/logout")]
-async fn logout(state: web::Data<HttpServerState>, req: actix_web::HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("sid") {
-        match state.sessions.logout(cookie.value().to_string()).await {
-            Ok(_) => HttpResponse::Ok().finish(),
-            Err(err) => err.to_http_response(),
-        }
-    } else {
-        HttpResponse::Unauthorized().body("No session ID found in cookies")
-    }
-}
-
-#[get("/api/auth/me")]
-async fn me(state: web::Data<HttpServerState>, req: actix_web::HttpRequest) -> impl Responder {
-    if let Some(cookie) = req.cookie("sid") {
-        match state.sessions.session(cookie.value().to_string()).await {
-            Ok(user) => HttpResponse::Ok().json(user),
-            Err(err) => err.to_http_response(),
-        }
-    } else {
-        HttpResponse::Unauthorized().body("No session ID found in cookies")
-    }
-}
-
-pub async fn http_server(
-    sessions: Arc<dyn SessionManager>,
-    auth: Arc<dyn Authenticator>,
-    base_url: String,
-    cookie_name: String,
-    listen_addr: String,
-) -> Result<(), std::io::Error> {
-    let data = web::Data::new(HttpServerState {
-        sessions,
-        auth,
-        base_url,
-        cookie_name,
-    });
-
-    HttpServer::new(move || {
-        App::new()
-            .app_data(data.clone())
-            .service(login)
-            .service(login_callback)
-            .service(logout)
-            .service(me)
-    })
-    .bind(listen_addr)?
-    .run()
-    .await
 }
