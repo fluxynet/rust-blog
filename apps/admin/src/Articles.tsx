@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -10,6 +10,7 @@ import {
   Save,
   Trash2,
   Pencil,
+  Recycle,
 } from "lucide-react";
 import {
   Card,
@@ -46,13 +47,11 @@ import {
 
 import { formatDate } from "./lib/date";
 
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import ToolbarPlugin from "./editor/ToolbarPlugin";
+import ReactQuill from 'react-quill-new';
+import 'react-quill/dist/quill.snow.css';
 
 import { fakeArticles } from "./fake/articles";
+import { Input } from "./components/ui/input";
 
 type Article = {
   id: string;
@@ -164,7 +163,7 @@ export function ArticlesList() {
             </TabsList>
           </Tabs>
           <DropdownMenu>
-            <DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
               <Button variant="ghost" hidden={!hasSelection}>
                 Change Status
               </Button>
@@ -432,36 +431,61 @@ function ListView({
 export function ArticleEdit() {
   const { id } = useParams<{ id: string }>();
   const [article, setArticle] = useState<Article | null>(null);
+  const [status, setStatus] = useState<Status>(Status.Unknown)
 
   useEffect(() => {
     const a = fakeArticles.find((article) => article.id === id);
-    if (a) {
-      setArticle(a);
+    if (!a) {
+      return;
     }
+
+    setArticle(a);
+    setStatus(article_status(a.status, a.deleted_at));
   }, [id]);
+
+  useEffect(() => {
+    if (!article) {
+      return;
+    }
+
+  }, [article])
 
   if (!article) {
     return <div>Loading...</div>;
   }
 
+  const changeTitle = (event: ChangeEvent<HTMLInputElement>) => {
+    const {value} = event.target;
+    setArticle({ ...article, title: value});
+  };
+
+  const onContentChange = (content: string) => {
+    setArticle({ ...article, content});
+  };
+
   return (
     <div>
       <div className="flex flex-row justify-between">
         <h1
-          className="font-bold text-3xl text-gray-500 border-b-2"
-          contentEditable={true}
+          className="border-b-2"
         >
-          {article.title}
+          <Input type="text" 
+          placeholder="Enter title" 
+          
+          className="border-none font-bold text-3xl text-gray-500 "
+          value={article.title} 
+          onChange={changeTitle}
+          />
         </h1>
         <div className="flex flex-row justify-end gap-x-5 cursor-pointer">
           <div className="flex items-center space-x-2">
-            <Switch id="article-published" />
+            <Switch id="article-published" checked={status === Status.Published} />
             <Label htmlFor="article-published">Publish</Label>
           </div>
           <Button variant="outline" className="bg-green-600 text-white">
             <Save /> Save
           </Button>
-          <AlertDialog>
+          {status !== Status.Trash && (<AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">
                 <Trash2 color="white" /> Delete
@@ -482,48 +506,47 @@ export function ArticleEdit() {
                 <AlertDialogAction>Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>
+          </AlertDialog>)}
+          {status === Status.Trash && (<AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline">
+                <Recycle /> Restore
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Are you sure you want to restore this article?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  The article will be moved to draft state. You can
+                  publish this later if you want.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction>Restore</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>)}
         </div>
       </div>
       <div className="mt-4">
-        <Editor />
+        <Editor onChange={onContentChange} content={article.content}/>
       </div>
     </div>
   );
 }
 
-function onError(error: unknown) {
-  console.error(error);
-}
+function Editor({content, onChange}:{content: string, onChange: (v: string) => void}) {
+  const [value, setValue] = useState<string>(content);
 
-function Editor() {
-  const initialConfig = {
-    namespace: "ArticleEditor",
-    //   theme,
-    onError,
-  };
+  const onChanged = (v : string) => {
+    setValue(v);
+    onChange(v);
+  }
 
   return (
-    <LexicalComposer initialConfig={initialConfig}>
-      <Card>
-        <CardHeader>
-          <CardDescription>
-            <ToolbarPlugin />
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className="min-h-lvh border-2 border-gray-200"
-                aria-placeholder="enter some text"
-                placeholder={<br />}
-              />
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-        </CardContent>
-      </Card>
-    </LexicalComposer>
+    <ReactQuill theme="snow" value={value} onChange={onChanged}/>
   );
 }
