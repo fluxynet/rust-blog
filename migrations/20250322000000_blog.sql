@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS blog.articles (
     content TEXT NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
-    deleted_at TIMESTAMPTZ,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('published', 'draft', 'trash')),
     author TEXT NOT NULL
 );

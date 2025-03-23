@@ -8,17 +8,18 @@ use uuid::Uuid;
 
 pub struct RedisRepo {
     pool: Pool<RedisConnectionManager>,
+    ttl: i64,
 }
 
 impl RedisRepo {
-    pub async fn new(redis_url: &str) -> Result<Self, Error> {
+    pub async fn new(redis_url: &str, ttl: i64) -> Result<Self, Error> {
         let manager = match RedisConnectionManager::new(redis_url) {
             Ok(m) => m,
             Err(err) => return Err(Error::ConnectionError(err.to_string())),
         };
 
         match Pool::builder().build(manager).await {
-            Ok(pool) => return Ok(RedisRepo { pool }),
+            Ok(pool) => return Ok(RedisRepo { pool, ttl }),
             Err(err) => return Err(Error::ConnectionError(err.to_string())),
         };
     }
@@ -40,7 +41,13 @@ impl Repo for RedisRepo {
         );
 
         match con.set::<&str, String, ()>(token.as_str(), data).await {
-            Ok(_) => return Ok(token),
+            Ok(_) => {
+                match con.expire::<&str, u32>(token.as_str(), self.ttl).await {
+                    Ok(_) => (),
+                    Err(err) => return Err(Error::ConnectionError(err.to_string())),
+                }
+                return Ok(token);
+            }
             Err(err) => return Err(Error::ConnectionError(err.to_string())),
         }
     }

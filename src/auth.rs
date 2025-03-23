@@ -12,10 +12,10 @@ pub mod redis;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct User {
-    id: u64,
-    name: String,
-    avatar_url: String,
-    login: String,
+    pub id: u64,
+    pub name: String,
+    pub avatar_url: String,
+    pub login: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -100,7 +100,9 @@ mod default_session_manager_test {
     #[tokio::test]
     async fn test_session_not_found() {
         let mut mock_repo = MockRepo::new();
-        mock_repo.expect_get().returning(|_| Err(Error::NotFound));
+        mock_repo
+            .expect_get()
+            .returning(|_| Err(Error::NotFound("session not found".to_string())));
 
         let repo = Arc::new(mock_repo);
         let session_manager = DefaultSessionManager::new(repo);

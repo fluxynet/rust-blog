@@ -3,6 +3,7 @@ base_url = "http://127.0.0.1:8080"
 [auth]
 listen_addr = "127.0.0.1:8080"
 redis = "redis://127.0.0.1:6379"
+ttl = 86400
 cookie = "sid"
 gh_client_id = ""
 gh_client_secret = ""

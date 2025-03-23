@@ -1,4 +1,4 @@
-use fintrellis::auth::{AuthError, RedisRepo, User};
+use crate::auth::{AuthError, RedisRepo, User};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use testcontainers::{Container, clients::Cli, images::generic::GenericImage};

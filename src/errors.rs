@@ -15,8 +15,8 @@ pub enum Error {
     #[error("permission denied: {0}")]
     PermissionDenied(String),
 
-    #[error("session not found")]
-    NotFound,
+    #[error("{0} not found")]
+    NotFound(String),
 }
 
 impl Error {
@@ -28,7 +28,7 @@ impl Error {
             Error::ConnectionError(msg) => HttpResponse::InternalServerError().body(msg.clone()),
             Error::SerializationError(msg) => HttpResponse::BadRequest().body(msg.clone()),
             Error::PermissionDenied(msg) => HttpResponse::Forbidden().body(msg.clone()),
-            Error::NotFound => HttpResponse::NotFound().body("Session not found".to_string()),
+            Error::NotFound(msg) => HttpResponse::NotFound().body(msg.clone()),
         }
     }
 }
