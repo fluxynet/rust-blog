@@ -50,10 +50,6 @@ export type ListArticlesParams = {
 /**
  * Filter by status
  */
-status: string;
-/**
- * Filter by status
- */
 status?: string;
 /**
  * Page number

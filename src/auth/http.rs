@@ -49,14 +49,15 @@ async fn login_callback(
 ) -> impl Responder {
     match state.auth.login(query.code.clone()).await {
         Err(err) => err.to_http_response(),
-        Ok(session) => HttpResponse::Ok()
+        Ok(session) => HttpResponse::Found()
             .cookie(
                 Cookie::build(state.cookie_name.clone(), session.token)
-                    .domain(state.base_url.clone())
-                    .path("/")
-                    .secure(true)
-                    .http_only(true)
-                    .finish(),
+                .path("/")
+                // the following should be uncommented for non 127.0.0.1 domains
+                // .domain(state.base_url.clone())
+                // .secure(true)
+                // .http_only(true)
+                .finish(),
             )
             .append_header(("Location", state.base_url.clone()))
             .finish(),

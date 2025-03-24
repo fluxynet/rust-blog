@@ -28,6 +28,13 @@ services:
      - postgres
      - loki
      - keydb
+  
+  app:
+    image: blogapp:latest
+    build:
+      context: ./apps/admin
+    ports:
+      - "8000:80"
 
   postgres:
     image: postgres:17

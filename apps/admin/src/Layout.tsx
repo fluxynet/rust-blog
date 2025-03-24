@@ -7,7 +7,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { Link, NavLink } from "react-router";
+import { NavLink } from "react-router";
 import { Button } from "./components/ui/button";
 import { User, useAuth } from "./services/auth";
 import { Avatar, AvatarImage } from "./components/ui/avatar";
@@ -56,11 +56,11 @@ function UserWidget({ user }: { user: User }) {
           <NavigationMenuItem>
             <NavigationMenuTrigger>{user.name}</NavigationMenuTrigger>
             <NavigationMenuContent>
-              <Link to="/api/auth/logout">
+              <a href="/api/auth/logout">
                 <span className="flex flex-row gap-x-1">
                   <LogOut /> Log Out
                 </span>
-              </Link>
+              </a>
             </NavigationMenuContent>
           </NavigationMenuItem>
         </NavigationMenuList>

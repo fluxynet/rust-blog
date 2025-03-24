@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router";
 
 function Login() {
   return (
@@ -18,7 +17,9 @@ function Login() {
               fill="currentColor"
             />
           </svg>
-          <Link to="http://127.0.0.1:8080/api/auth/login">Continue with Github</Link>
+          <a href="/api/auth/login">
+            Continue with Github
+          </a>
         </Button>
       </div>
     </div>
