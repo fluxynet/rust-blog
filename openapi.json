@@ -9,7 +9,7 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/articles": {
+    "/api/articles": {
       "get": {
         "tags": [
           "blog"
@@ -26,6 +26,34 @@
               "type": "integer",
               "format": "int64",
               "minimum": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -72,7 +100,7 @@
         }
       }
     },
-    "/articles/{id}": {
+    "/api/articles/{id}": {
       "get": {
         "tags": [
           "blog"
@@ -166,7 +194,7 @@
         }
       }
     },
-    "/articles/{id}/status/draft": {
+    "/api/articles/{id}/status/draft": {
       "put": {
         "tags": [
           "blog"
@@ -193,7 +221,7 @@
         }
       }
     },
-    "/articles/{id}/status/publish": {
+    "/api/articles/{id}/status/publish": {
       "put": {
         "tags": [
           "blog"
@@ -220,7 +248,7 @@
         }
       }
     },
-    "/articles/{id}/status/trash": {
+    "/api/articles/{id}/status/trash": {
       "put": {
         "tags": [
           "blog"
@@ -247,7 +275,7 @@
         }
       }
     },
-    "/auth/me": {
+    "/api/auth/me": {
       "get": {
         "tags": [
           "auth"

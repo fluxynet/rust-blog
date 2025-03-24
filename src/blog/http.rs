@@ -89,6 +89,9 @@ struct ArticlesListRequest {
     ),
     params(
         ("id" = u64, Path, description = "List articles"),
+        ("status" = String, Query, description = "Filter by status"),
+        ("status" = Option<String>, Query, description = "Filter by status"),
+        ("page" = Option<i64>, Query, description = "Page number"),
     )
 )]
 #[get("/api/articles")]
@@ -107,8 +110,14 @@ pub async fn list_articles(
     };
 
     let page = match query.page {
-        Some(p) => p,
-        None => 0,
+        Some(p) => {
+            if p < 1 {
+                1
+            } else {
+                p
+            }
+        }
+        None => 1,
     };
 
     match state.admin.list(opts, page).await {

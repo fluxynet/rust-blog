@@ -11,6 +11,7 @@ import {
   Trash2,
   Pencil,
   Recycle,
+  AlertCircle,
 } from "lucide-react";
 import {
   Card,
@@ -47,11 +48,39 @@ import {
 
 import { formatDate } from "./lib/date";
 
-import ReactQuill from 'react-quill-new';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from "react-quill-new";
+// import 'react-quill/dist/quill.snow.css';
 
 import { fakeArticles } from "./fake/articles";
 import { Input } from "./components/ui/input";
+
+import { getBlog } from "./api/blog";
+import {
+  ListArticlesParams,
+  ListingArticleResponseItemsItem,
+} from "./api/blog.schemas";
+import { SkeletonCard } from "./components/ui/skeleton-card";
+import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
+const {
+  listArticles,
+  getArticle,
+  deleteArticle,
+  createArticle,
+  updateArticle,
+  publishArticle,
+  moveArticleToDraft,
+  moveArticleToTrash,
+} = getBlog();
 
 type Article = {
   id: string;
@@ -77,8 +106,10 @@ enum Status {
   Trash = "trash",
 }
 
-function article_status(status: string, deleted_at: unknown): Status {
-  if (deleted_at) {
+function article_status(status: string): Status {
+  status = status.toLowerCase();
+
+  if (status == "trash") {
     return Status.Trash;
   }
 
@@ -94,12 +125,18 @@ function article_status(status: string, deleted_at: unknown): Status {
 }
 
 export function ArticlesList() {
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<ListingArticleResponseItemsItem[]>(
+    []
+  );
   const [viewmode, setViewmode] = useState<ViewMode>(ViewMode.Grid);
   const [status, setStatus] = useState<Status>(Status.Unknown);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hasSelection, setHasSelection] = useState<boolean>(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [isLoading, setLoading] = useState<boolean>(true);
+  const [pages, setPages] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [error, setError] = useState<string>("");
 
   const changeViewMode = (v: string) => setViewmode(v as ViewMode);
   const changeStatus = (v: string) => setStatus(v as Status);
@@ -118,29 +155,35 @@ export function ArticlesList() {
   const hideDeleteDialog = () => setDeleteDialogOpen(false);
   const deleteDialogAction = () => {
     setDeleteDialogOpen(false);
-    console.log({selected, action: "delete_articles"})
+    console.log({ selected, action: "delete_articles" });
   };
 
   useEffect(() => {
-    switch (status) {
-      case Status.Unknown:
-        setArticles(fakeArticles);
-        break;
-      case Status.Published:
-        setArticles(
-          fakeArticles.filter((a) => a.status === "published" && !a.deleted_at)
-        );
-        break;
-      case Status.Draft:
-        setArticles(
-          fakeArticles.filter((a) => a.status === "draft" && !a.deleted_at)
-        );
-        break;
-      case Status.Trash:
-        setArticles(fakeArticles.filter((a) => a.deleted_at));
-        break;
+    const params: ListArticlesParams = { page };
+
+    if (status !== Status.Unknown) {
+      params.status = status;
     }
-  }, [status]);
+
+    setLoading(true);
+
+    setTimeout(() => {
+      listArticles(params)
+        .then((rs) => {
+          const {
+            data: { items, pages },
+          } = rs;
+
+          setArticles(items);
+          setPages(pages);
+          setError("");
+        })
+        .catch((err) => {
+          console.error({ err });
+        })
+        .finally(() => setLoading(false));
+    }, 500);
+  }, [status, page]);
 
   return (
     <div className="flex flex-col gap-y-4">
@@ -208,25 +251,96 @@ export function ArticlesList() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onMouseUp={deleteDialogAction}>Continue</AlertDialogAction>
+              <AlertDialogAction onMouseUp={deleteDialogAction}>
+                Continue
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      {viewmode === ViewMode.Grid && (
-        <GridView
-          articles={articles}
-          selected={selected}
-          toggleItem={toggleItem}
-        />
+      {!isLoading && error === "" && articles.length !== 0 && <Pages pages={pages} page={page} setPage={setPage} />}
+      {isLoading && <Loader />}
+      {!isLoading && error !== "" && <Alert>Error! {error}</Alert>}
+      {!isLoading && error === "" && articles.length === 0 && (
+        <Alert>
+          <AlertCircle />
+          <AlertTitle>No articles found</AlertTitle>
+          <AlertDescription>
+            No articles found. Try a different filter or add some articles.
+          </AlertDescription>
+        </Alert>
       )}
-      {viewmode === ViewMode.List && (
-        <ListView
-          articles={articles}
-          selected={selected}
-          setSelection={setSelected}
+      {!isLoading &&
+        error === "" &&
+        articles.length != 0 &&
+        viewmode === ViewMode.Grid && (
+          <GridView
+            articles={articles}
+            selected={selected}
+            toggleItem={toggleItem}
+          />
+        )}
+      {!isLoading &&
+        error === "" &&
+        articles.length != 0 &&
+        viewmode === ViewMode.List && (
+          <ListView
+            articles={articles}
+            selected={selected}
+            setSelection={setSelected}
+          />
+        )}
+    </div>
+  );
+}
+
+function Pages({
+  pages,
+  page,
+  setPage,
+}: {
+  pages: number;
+  page: number;
+  setPage(n: number): void;
+}) {
+  return (
+    <Pagination>
+      <PaginationContent>
+      <PaginationItem>
+        <PaginationPrevious
+        href="#"
+        onClick={() => setPage(Math.max(1, page - 1))}
         />
-      )}
+      </PaginationItem>
+      {Array.from({ length: pages }, (_, i) => (
+        <PaginationItem key={i}>
+        <PaginationLink
+          href="#"
+          onClick={() => setPage(i + 1)}
+          className={page === i + 1 ? "active" : ""}
+        >
+          {i + 1}
+        </PaginationLink>
+        </PaginationItem>
+      ))}
+      <PaginationItem>
+        <PaginationNext
+        href="#"
+        onClick={() => setPage(Math.min(pages, page + 1))}
+        />
+      </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );;
+}
+
+function Loader() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
     </div>
   );
 }
@@ -236,7 +350,7 @@ function GridView({
   selected,
   toggleItem,
 }: {
-  articles: Article[];
+  articles: ListingArticleResponseItemsItem[];
   selected: Set<string>;
   toggleItem: (id: string, select: boolean) => void;
 }) {
@@ -259,12 +373,12 @@ function GridItem({
   selected,
   toggleItem,
 }: {
-  article: Article;
+  article: ListingArticleResponseItemsItem;
   selected: boolean;
   toggleItem: (id: string, select: boolean) => void;
 }) {
   const editLink = `/articles/${article.id}`;
-  const status = article_status(article.status, article.deleted_at);
+  const status = article_status(article.status);
   const [checked, setChecked] = useState<boolean>(selected);
 
   const onChecked = (checked: boolean) => {
@@ -320,7 +434,7 @@ function GridItem({
   );
 }
 
-const columns: ColumnDef<Article>[] = [
+const columns: ColumnDef<ListingArticleResponseItemsItem>[] = [
   {
     accessorKey: "id",
     header: ({ table }) => (
@@ -346,8 +460,7 @@ const columns: ColumnDef<Article>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      const deleted_at = row.getValue("deleted_at") as Date;
-      const s = article_status(status, deleted_at);
+      const s = article_status(status);
 
       switch (s) {
         case Status.Published:
@@ -377,7 +490,7 @@ const columns: ColumnDef<Article>[] = [
     accessorKey: "updated_at",
     header: "Updated",
     cell: ({ row }) => {
-      const t = row.getValue("updated_at") as Date;
+      const t = row.getValue("updated_at") as string;
       return <span>{formatDate(t)}</span>;
     },
   },
@@ -385,16 +498,8 @@ const columns: ColumnDef<Article>[] = [
     accessorKey: "created_at",
     header: "Created",
     cell: ({ row }) => {
-      const t = row.getValue("created_at") as Date;
+      const t = row.getValue("created_at") as string;
       return <span>{formatDate(t)}</span>;
-    },
-  },
-  {
-    accessorKey: "deleted_at",
-    header: "Deleted",
-    cell: ({ row }) => {
-      const t = row.getValue("deleted_at") as Date;
-      return t ? <span>{formatDate(t)}</span> : "";
     },
   },
 ];
@@ -404,7 +509,7 @@ function ListView({
   selected,
   setSelection,
 }: {
-  articles: Article[];
+  articles: ListingArticleResponseItemsItem[];
   selected: Set<string>;
   setSelection: (selection: Set<string>) => void;
 }) {
@@ -431,7 +536,7 @@ function ListView({
 export function ArticleEdit() {
   const { id } = useParams<{ id: string }>();
   const [article, setArticle] = useState<Article | null>(null);
-  const [status, setStatus] = useState<Status>(Status.Unknown)
+  const [status, setStatus] = useState<Status>(Status.Unknown);
 
   useEffect(() => {
     const a = fakeArticles.find((article) => article.id === id);
@@ -440,113 +545,121 @@ export function ArticleEdit() {
     }
 
     setArticle(a);
-    setStatus(article_status(a.status, a.deleted_at));
+    setStatus(article_status(a.status));
   }, [id]);
 
   useEffect(() => {
     if (!article) {
       return;
     }
-
-  }, [article])
+  }, [article]);
 
   if (!article) {
     return <div>Loading...</div>;
   }
 
   const changeTitle = (event: ChangeEvent<HTMLInputElement>) => {
-    const {value} = event.target;
-    setArticle({ ...article, title: value});
+    const { value } = event.target;
+    setArticle({ ...article, title: value });
   };
 
   const onContentChange = (content: string) => {
-    setArticle({ ...article, content});
+    setArticle({ ...article, content });
   };
 
   return (
     <div>
       <div className="flex flex-row justify-between">
-        <h1
-          className="border-b-2"
-        >
-          <Input type="text" 
-          placeholder="Enter title" 
-          
-          className="border-none font-bold text-3xl text-gray-500 "
-          value={article.title} 
-          onChange={changeTitle}
+        <h1 className="border-b-2">
+          <Input
+            type="text"
+            placeholder="Enter title"
+            className="border-none font-bold text-3xl text-gray-500 "
+            value={article.title}
+            onChange={changeTitle}
           />
         </h1>
         <div className="flex flex-row justify-end gap-x-5 cursor-pointer">
           <div className="flex items-center space-x-2">
-            <Switch id="article-published" checked={status === Status.Published} />
+            <Switch
+              id="article-published"
+              checked={status === Status.Published}
+            />
             <Label htmlFor="article-published">Publish</Label>
           </div>
           <Button variant="outline" className="bg-green-600 text-white">
             <Save /> Save
           </Button>
-          {status !== Status.Trash && (<AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 color="white" /> Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Are you sure you want to delete this article?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  The article will be unpublished and moved to trash. You can
-                  restore this later if you want.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>)}
-          {status === Status.Trash && (<AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <Recycle /> Restore
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Are you sure you want to restore this article?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  The article will be moved to draft state. You can
-                  publish this later if you want.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction>Restore</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>)}
+          {status !== Status.Trash && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 color="white" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to delete this article?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The article will be unpublished and moved to trash. You can
+                    restore this later if you want.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {status === Status.Trash && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <Recycle /> Restore
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to restore this article?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The article will be moved to draft state. You can publish
+                    this later if you want.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction>Restore</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
       <div className="mt-4">
-        <Editor onChange={onContentChange} content={article.content}/>
+        <Editor onChange={onContentChange} content={article.content} />
       </div>
     </div>
   );
 }
 
-function Editor({content, onChange}:{content: string, onChange: (v: string) => void}) {
+function Editor({
+  content,
+  onChange,
+}: {
+  content: string;
+  onChange: (v: string) => void;
+}) {
   const [value, setValue] = useState<string>(content);
 
-  const onChanged = (v : string) => {
+  const onChanged = (v: string) => {
     setValue(v);
     onChange(v);
-  }
+  };
 
-  return (
-    <ReactQuill theme="snow" value={value} onChange={onChanged}/>
-  );
+  return <ReactQuill theme="snow" value={value} onChange={onChanged} />;
 }

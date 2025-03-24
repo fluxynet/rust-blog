@@ -35,16 +35,7 @@ function Nav() {
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <MenuItem href="/" label="Home" icon={Home} />
-        </NavigationMenuItem>
-        <NavigationMenuItem>
           <MenuItem href="/articles" label="Articles" icon={BookOpenText} />
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <MenuItem href="/" label="Images" icon={Images} />
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <MenuItem href="/" label="History" icon={History} />
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
