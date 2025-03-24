@@ -162,8 +162,26 @@ impl Admin for DefaultAdmin {
         content: String,
         author: String,
     ) -> Result<Article, Error> {
+        if title.is_empty() {
+            return Err(Error::InvalidInput("title cannot be empty".to_string()));
+        }
+
+        if description.is_empty() {
+            return Err(Error::InvalidInput(
+                "description cannot be empty".to_string(),
+            ));
+        }
+
+        if content.is_empty() {
+            return Err(Error::InvalidInput("content cannot be empty".to_string()));
+        }
+
+        if author.is_empty() {
+            return Err(Error::InvalidInput("author cannot be empty".to_string()));
+        }
+
         let id = Uuid::new_v4();
-        let created_at = Utc::now();
+        let created_at: DateTime<Utc> = Utc::now();
         let updated_at = Utc::now();
         let status = Status::Draft;
 
@@ -213,6 +231,20 @@ impl Admin for DefaultAdmin {
         content: String,
     ) -> Result<(), Error> {
         self.repo.articles_get(id).await?;
+
+        if title.is_empty() {
+            return Err(Error::InvalidInput("title cannot be empty".to_string()));
+        }
+
+        if description.is_empty() {
+            return Err(Error::InvalidInput(
+                "description cannot be empty".to_string(),
+            ));
+        }
+
+        if content.is_empty() {
+            return Err(Error::InvalidInput("content cannot be empty".to_string()));
+        }
 
         self.repo
             .article_update(id, title, description, content)

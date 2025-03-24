@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BookOpenCheck,
@@ -14,6 +14,7 @@ import {
   Hourglass,
   CircleCheckBig,
   OctagonX,
+  FilePlus,
 } from "lucide-react";
 import {
   Card,
@@ -159,10 +160,10 @@ function ActionStateMessage({
 }
 
 type ChangeStatusType =
-    | typeof publishArticle
-    | typeof moveArticleToDraft
-    | typeof moveArticleToTrash
-    | typeof deleteArticle;
+  | typeof publishArticle
+  | typeof moveArticleToDraft
+  | typeof moveArticleToTrash
+  | typeof deleteArticle;
 
 export function ArticlesList() {
   const [articles, setArticles] = useState<ListingArticleResponseItemsItem[]>(
@@ -323,6 +324,12 @@ export function ArticlesList() {
             error={actionError}
           />
         </div>
+        <div className="flex flex-row gap-2">
+        <Link to="/articles/new">
+        <Button size="sm" variant="outline" className="bg-green-600 text-white">
+          <FilePlus/> Add Article
+        </Button>
+        </Link>
         <Tabs defaultValue="grid" onValueChange={changeViewMode}>
           <div className="flex flex-col items-end">
             <TabsList>
@@ -335,6 +342,7 @@ export function ArticlesList() {
             </TabsList>
           </div>
         </Tabs>
+        </div>
         <AlertDialog open={deleteDialogOpen} onOpenChange={hideDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -642,6 +650,91 @@ function ListView({
   );
 }
 
+export function ArticleCreate() {
+  const [title, setTitle] = useState<string>("");
+  const [content, setContent] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [action, setAction] = useState<string>("");
+  const [actionError, setActionError] = useState<string>("");
+  const [actionState, setActionState] = useState<ActionState>(ActionState.None);
+  const navigate = useNavigate();
+
+  const changeTitle = (event: ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+    setTitle(value);
+  };
+
+  const changeDescription = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const { value } = event.target;
+    setDescription(value);
+  };
+
+  const onContentChange = (content: string) => {
+    setContent(content);
+  };
+
+  const saveAction = () => {
+    setActionState(ActionState.Active);
+    setAction("Saving");
+
+    createArticle({ title, content, description })
+      .then(({data}) => {
+        const {id} = data;
+        setActionState(ActionState.Success);
+        navigate(`/articles/${id}`);
+      })
+      .catch(({response, message}) => {
+        const {data} = response;
+        const msg = data || message;
+
+        setActionState(ActionState.Error);
+        setActionError(msg);
+      });
+  };
+
+  return (
+    <div>
+      <div className="flex flex-row justify-between">
+        <h1 className="border-b-2">
+          <Input
+            type="text"
+            placeholder="Enter title"
+            className="border-none font-bold text-3xl text-gray-500 "
+            value={title}
+            onChange={changeTitle}
+          />
+        </h1>
+        <div className="flex flex-row justify-end gap-x-5 cursor-pointer">
+          <ActionStateMessage
+            action={action}
+            state={actionState}
+            error={actionError}
+          />
+          <Button
+            variant="outline"
+            onMouseUp={saveAction}
+            className="bg-green-600 text-white"
+          >
+            <Save /> Save
+          </Button>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2">
+        <Label htmlFor="article-description">Description</Label>
+        <Textarea
+          placeholder="description"
+          id="article-description"
+          value={description}
+          onChange={changeDescription}
+        ></Textarea>
+      </div>
+      <div className="mt-4">
+        <Editor onChange={onContentChange} content={content} />
+      </div>
+    </div>
+  );
+}
+
 export function ArticleEdit() {
   const { id } = useParams<{ id: string }>();
   const [title, setTitle] = useState<string>("");
@@ -702,12 +795,16 @@ export function ArticleEdit() {
     setActionState(ActionState.Active);
     setAction("Saving");
 
-    updateArticle(id, {title, content, description})
+    updateArticle(id, { title, content, description })
       .then(() => {
         setActionState(ActionState.Success);
-      }).catch((err) => {
+      })
+      .catch(({response, message}) => {
+        const {data} = response;
+        const msg = data || message;
+
         setActionState(ActionState.Error);
-        setActionError(err.message);
+        setActionError(msg);
       });
   };
 
@@ -722,11 +819,13 @@ export function ArticleEdit() {
     action(id)
       .then(() => {
         setActionState(ActionState.Success);
-        setStatus(status)
+        setStatus(status);
       })
-      .catch((err) => {
+      .catch(({response, message}) => {
+        const {data} = response;
+        const msg = data || message;
         setActionState(ActionState.Error);
-        setActionError(err.message);
+        setActionError(msg);
       });
   };
 
@@ -757,39 +856,67 @@ export function ArticleEdit() {
           />
         </h1>
         <div className="flex flex-row justify-end gap-x-5 cursor-pointer">
-        <ActionStateMessage action={action} state={actionState} error={actionError} />
+          <ActionStateMessage
+            action={action}
+            state={actionState}
+            error={actionError}
+          />
           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  {status === Status.Published && (<><BookOpenCheck color="green" /><span className="text-green" >Published</span></>)}
-                  {status === Status.Draft && (<><NotebookPen /><span>Draft</span></>)}  
-                  {status === Status.Trash && (<><Trash2 color="red" /><span className="text-red" >Trash</span></>)}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={publishAction}>
-                  <BookOpenText color="green" />
-                  Published
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={draftAction}>
-                  <NotebookPen />
-                  Draft
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={trashAction}>
-                  <Trash2 color="red" />
-                  Trash
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" onMouseUp={saveAction} className="bg-green-600 text-white">
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                {status === Status.Published && (
+                  <>
+                    <BookOpenCheck color="green" />
+                    <span className="text-green">Published</span>
+                  </>
+                )}
+                {status === Status.Draft && (
+                  <>
+                    <NotebookPen />
+                    <span>Draft</span>
+                  </>
+                )}
+                {status === Status.Trash && (
+                  <>
+                    <Trash2 color="red" />
+                    <span className="text-red">Trash</span>
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={publishAction}>
+                <BookOpenText color="green" />
+                Published
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={draftAction}>
+                <NotebookPen />
+                Draft
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={trashAction}>
+                <Trash2 color="red" />
+                Trash
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            onMouseUp={saveAction}
+            className="bg-green-600 text-white"
+          >
             <Save /> Save
           </Button>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-2">
         <Label htmlFor="article-description">Description</Label>
-        <Textarea placeholder="description" id="article-description" value={description} onChange={changeDescription}></Textarea>
+        <Textarea
+          placeholder="description"
+          id="article-description"
+          value={description}
+          onChange={changeDescription}
+        ></Textarea>
       </div>
       <div className="mt-4">
         <Editor onChange={onContentChange} content={content} />

@@ -106,19 +106,20 @@ impl Repo for PostgresRepo {
             query.push(" WHERE status = ");
             query.push_bind(status.to_string());
 
-            query.push(" LIMIT ");
-            query.push_bind(limit);
-            query.push(" OFFSET ");
-            query.push_bind(offset);
-
             count.push(" WHERE status = ");
             count.push_bind(status.to_string());
-
-            count.push(" LIMIT ");
-            count.push_bind(limit);
-            count.push(" OFFSET ");
-            count.push_bind(offset);
         }
+
+        query.push("ORDER BY created_at DESC");
+        query.push(" LIMIT ");
+        query.push_bind(limit);
+        query.push(" OFFSET ");
+        query.push_bind(offset);
+
+        count.push(" LIMIT ");
+        count.push_bind(limit);
+        count.push(" OFFSET ");
+        count.push_bind(offset);
 
         let mut items = Vec::new();
         let mut rows = query

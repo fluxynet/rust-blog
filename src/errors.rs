@@ -17,6 +17,9 @@ pub enum Error {
 
     #[error("{0} not found")]
     NotFound(String),
+
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
 }
 
 impl Error {
@@ -29,6 +32,7 @@ impl Error {
             Error::SerializationError(msg) => HttpResponse::BadRequest().body(msg.clone()),
             Error::PermissionDenied(msg) => HttpResponse::Forbidden().body(msg.clone()),
             Error::NotFound(msg) => HttpResponse::NotFound().body(msg.clone()),
+            Error::InvalidInput(msg) => HttpResponse::BadRequest().body(msg.clone()),
         }
     }
 }

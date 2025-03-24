@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {getBlog} from "@/api/blog";
+
+const { me } = getBlog();
 
 export type User = {
   name: string;
@@ -8,27 +11,28 @@ export type User = {
 
 type AuthContextType = {
   user: User | null;
-  logout: () => void;
-};
-
-const fakeUser: User = {
-  avatar_url: "https://avatars.githubusercontent.com/u/949842?v=4",
-  login: "fluxynet",
-  name: "Muhammad Yusuf",
+  isLoggedIn: boolean;
 };
 
 export const useAuth = (): AuthContextType => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const login = (user: User) => {
-    setUser(user);
+  const login = () => {
+    if (isLoggedIn) return;
+    me().then(({data}) => {
+      const { name, avatar_url, login } = data;
+      setUser({name, avatar_url, login});
+      setIsLoggedIn(true);
+    }).catch(() => {
+      setUser(null);
+      setIsLoggedIn(false);
+    });
   };
 
-  const logout = () => {
-    setUser(null);
-  };
+  useEffect(() => {
+    login();
+  }, []);
 
-  login(fakeUser);
-
-  return { logout, user };
+  return { user, isLoggedIn };
 };

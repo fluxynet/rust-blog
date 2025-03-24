@@ -1,12 +1,9 @@
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router";
 
-function Login({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"form">) {
+function Login() {
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Welcome back</h1>
         <p className="text-balance text-sm text-muted-foreground">
@@ -21,10 +18,10 @@ function Login({
               fill="currentColor"
             />
           </svg>
-          Login with GitHub
+          <Link to="http://127.0.0.1:8080/api/auth/login">Continue with Github</Link>
         </Button>
       </div>
-    </form>
+    </div>
   )
 }
 

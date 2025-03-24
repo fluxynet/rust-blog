@@ -67,7 +67,9 @@ async fn login_callback(
 async fn logout(state: web::Data<State>, req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie(&state.cookie_name) {
         match state.sessions.logout(cookie.value().to_string()).await {
-            Ok(_) => HttpResponse::Ok().finish(),
+            Ok(_) => HttpResponse::Found()
+                .append_header(("Location", state.base_url.clone()))
+                .finish(),
             Err(err) => err.to_http_response(),
         }
     } else {
