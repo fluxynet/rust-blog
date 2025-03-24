@@ -1,0 +1,40 @@
+@base_url = localhost:8080
+GET http://{{base_url}}/api/auth/me
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+### 
+POST http://{{base_url}}/api/articles
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+Content-Type: application/json
+
+{
+    "title": "Sample Article Title",
+    "description": "This is a sample description for the article.",
+    "content": "This is the main content of the sample article. It contains several paragraphs of text to illustrate the structure of an article."
+}
+
+###
+PATCH http://{{base_url}}/api/articles/3c9fa92a-1358-4250-af3e-22edbd71bbf4
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+Content-Type: application/json
+
+{
+    "title": "New Article Title",
+    "description": "This is a sample description for the article.",
+    "content": "This is the content of the sample article. It contains several paragraphs of text to illustrate the structure of an article."
+}
+
+###
+GET http://{{base_url}}/api/articles
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+###
+GET http://{{base_url}}/api/articles/3c9fa92a-1358-4250-af3e-22edbd71bbf4
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+###
+DELETE http://{{base_url}}/api/articles/3c9fa92a-1358-4250-af3e-22edbd71bbf4
+Cookie: sid=cd2b45c8-c1d9-4bc4-b7a4-2b2ec39a43da
+
+###
+GET http://{{base_url}}/api/auth/me
+
+###
+http://localhost:8080/api/auth/login/callback

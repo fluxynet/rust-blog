@@ -1,4 +1,4 @@
-import { Home, BookOpenText, History, Images, LogOut } from "lucide-react";
+import {  BookOpenText, LogOut } from "lucide-react";
 import {
   NavigationMenu,
   NavigationMenuContent,

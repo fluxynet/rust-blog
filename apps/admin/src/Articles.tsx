@@ -10,8 +10,10 @@ import {
   Save,
   Trash2,
   Pencil,
-  Recycle,
   AlertCircle,
+  Hourglass,
+  CircleCheckBig,
+  OctagonX,
 } from "lucide-react";
 import {
   Card,
@@ -35,7 +37,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "./components/ui/checkbox";
 import {
@@ -49,9 +50,8 @@ import {
 import { formatDate } from "./lib/date";
 
 import ReactQuill from "react-quill-new";
-// import 'react-quill/dist/quill.snow.css';
+import "react-quill/dist/quill.snow.css";
 
-import { fakeArticles } from "./fake/articles";
 import { Input } from "./components/ui/input";
 
 import { getBlog } from "./api/blog";
@@ -64,12 +64,12 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Textarea } from "./components/ui/textarea";
 
 const {
   listArticles,
@@ -81,18 +81,6 @@ const {
   moveArticleToDraft,
   moveArticleToTrash,
 } = getBlog();
-
-type Article = {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-  updated_at: Date;
-  created_at: Date;
-  deleted_at?: Date;
-  status: "published" | "draft";
-  author: string;
-};
 
 enum ViewMode {
   Grid = "grid",
@@ -124,6 +112,58 @@ function article_status(status: string): Status {
   return Status.Unknown;
 }
 
+enum ActionState {
+  None = "",
+  Active = "active",
+  Success = "success",
+  Error = "error",
+}
+
+function ActionStateMessage({
+  action,
+  state,
+  error,
+}: {
+  action: string;
+  state: string;
+  error: string;
+}) {
+  let color = "";
+
+  switch (state) {
+    case ActionState.Active:
+      color = "text-blue-500 border-blue-500";
+      break;
+    case ActionState.Success:
+      color = "text-green-500 border-green-500";
+      break;
+    case ActionState.Error:
+      color = "text-red-500 border-red-500";
+      break;
+  }
+
+  return (
+    <div className={`flex flex-row gap-2 rounded-md p-2 text-sm ${color}`}>
+      {state === ActionState.Active && <Hourglass size={15} />}
+      {state === ActionState.Success && <CircleCheckBig size={15} />}
+      {state === ActionState.Error && <OctagonX size={15} />}
+      {action}{" "}
+      {state === ActionState.Active && (
+        <span className="text-blue-500">...</span>
+      )}
+      {state === ActionState.Error && error && (
+        <span className="text-red-500"> - {error}</span>
+      )}
+    </div>
+  );
+}
+
+type ChangeStatusType =
+    | typeof publishArticle
+    | typeof moveArticleToDraft
+    | typeof moveArticleToTrash
+    | typeof deleteArticle;
+
 export function ArticlesList() {
   const [articles, setArticles] = useState<ListingArticleResponseItemsItem[]>(
     []
@@ -137,6 +177,9 @@ export function ArticlesList() {
   const [pages, setPages] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
   const [error, setError] = useState<string>("");
+  const [action, setAction] = useState<string>("");
+  const [actionError, setActionError] = useState<string>("");
+  const [actionState, setActionState] = useState<ActionState>(ActionState.None);
 
   const changeViewMode = (v: string) => setViewmode(v as ViewMode);
   const changeStatus = (v: string) => setStatus(v as Status);
@@ -151,14 +194,7 @@ export function ArticlesList() {
     setHasSelection(selected.size !== 0);
   };
 
-  const showDeleteDialog = () => setDeleteDialogOpen(true);
-  const hideDeleteDialog = () => setDeleteDialogOpen(false);
-  const deleteDialogAction = () => {
-    setDeleteDialogOpen(false);
-    console.log({ selected, action: "delete_articles" });
-  };
-
-  useEffect(() => {
+  const loadArticles = () => {
     const params: ListArticlesParams = { page };
 
     if (status !== Status.Unknown) {
@@ -183,7 +219,55 @@ export function ArticlesList() {
         })
         .finally(() => setLoading(false));
     }, 500);
-  }, [status, page]);
+  };
+
+  const statusAction = (msg: string, action: ChangeStatusType) => () => {
+    if (selected.size === 0) {
+      return;
+    }
+
+    setAction(msg.replace("COUNT", selected.size.toString()));
+    setActionState(ActionState.Active);
+
+    Promise.all(Array.from(selected).map((id) => action(id)))
+      .then(() => {
+        setActionState(ActionState.Success);
+        loadArticles();
+      })
+      .catch((err) => {
+        setActionState(ActionState.Error);
+        setActionError(err.message);
+      });
+  };
+
+  const publishAction = statusAction(
+    "Publish COUNT article(s)",
+    publishArticle
+  );
+
+  const draftAction = statusAction(
+    "Set COUNT article(s) to draft",
+    moveArticleToDraft
+  );
+
+  const trashAction = statusAction(
+    "Move COUNT article(s) to trash",
+    moveArticleToTrash
+  );
+
+  const deleteAction = statusAction(
+    "Permanently deleting COUNT article(s)",
+    deleteArticle
+  );
+
+  const showDeleteDialog = () => setDeleteDialogOpen(true);
+  const hideDeleteDialog = () => setDeleteDialogOpen(false);
+  const deleteDialogAction = () => {
+    setDeleteDialogOpen(false);
+    deleteAction();
+  };
+
+  useEffect(loadArticles, [status, page]);
 
   return (
     <div className="flex flex-col gap-y-4">
@@ -205,28 +289,39 @@ export function ArticlesList() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" hidden={!hasSelection}>
-                Change Status
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <BookOpenText color="green" />
-                Published
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <NotebookPen />
-                Draft
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={showDeleteDialog}>
-                <Trash2 color="red" />
-                Trash
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {actionState !== ActionState.Active && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" hidden={!hasSelection}>
+                  Change Status
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={publishAction}>
+                  <BookOpenText color="green" />
+                  Published
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={draftAction}>
+                  <NotebookPen />
+                  Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={trashAction}>
+                  <Trash2 color="red" />
+                  Trash
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={showDeleteDialog}>
+                  <Trash2 color="red" />
+                  Delete Permanently
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <ActionStateMessage
+            action={action}
+            state={actionState}
+            error={actionError}
+          />
         </div>
         <Tabs defaultValue="grid" onValueChange={changeViewMode}>
           <div className="flex flex-col items-end">
@@ -258,7 +353,9 @@ export function ArticlesList() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      {!isLoading && error === "" && articles.length !== 0 && <Pages pages={pages} page={page} setPage={setPage} />}
+      {!isLoading && error === "" && articles.length !== 0 && (
+        <Pages pages={pages} page={page} setPage={setPage} />
+      )}
       {isLoading && <Loader />}
       {!isLoading && error !== "" && <Alert>Error! {error}</Alert>}
       {!isLoading && error === "" && articles.length === 0 && (
@@ -306,32 +403,32 @@ function Pages({
   return (
     <Pagination>
       <PaginationContent>
-      <PaginationItem>
-        <PaginationPrevious
-        href="#"
-        onClick={() => setPage(Math.max(1, page - 1))}
-        />
-      </PaginationItem>
-      {Array.from({ length: pages }, (_, i) => (
-        <PaginationItem key={i}>
-        <PaginationLink
-          href="#"
-          onClick={() => setPage(i + 1)}
-          className={page === i + 1 ? "active" : ""}
-        >
-          {i + 1}
-        </PaginationLink>
+        <PaginationItem>
+          <PaginationPrevious
+            href="#"
+            onClick={() => setPage(Math.max(1, page - 1))}
+          />
         </PaginationItem>
-      ))}
-      <PaginationItem>
-        <PaginationNext
-        href="#"
-        onClick={() => setPage(Math.min(pages, page + 1))}
-        />
-      </PaginationItem>
+        {Array.from({ length: pages }, (_, i) => (
+          <PaginationItem key={i}>
+            <PaginationLink
+              href="#"
+              onClick={() => setPage(i + 1)}
+              className={page === i + 1 ? "active" : ""}
+            >
+              {i + 1}
+            </PaginationLink>
+          </PaginationItem>
+        ))}
+        <PaginationItem>
+          <PaginationNext
+            href="#"
+            onClick={() => setPage(Math.min(pages, page + 1))}
+          />
+        </PaginationItem>
       </PaginationContent>
     </Pagination>
-  );;
+  );
 }
 
 function Loader() {
@@ -481,6 +578,18 @@ const columns: ColumnDef<ListingArticleResponseItemsItem>[] = [
   {
     accessorKey: "title",
     header: "Title",
+    cell: ({ row }) => {
+      const title = row.getValue("title") as string;
+      const id = row.getValue("id") as string;
+      return (
+        <Link
+          to={`/articles/${id}`}
+          className="color-blue-200 border-b-2 border-blue-200"
+        >
+          <span>{title}</span>
+        </Link>
+      );
+    },
   },
   {
     accessorKey: "description",
@@ -535,37 +644,105 @@ function ListView({
 
 export function ArticleEdit() {
   const { id } = useParams<{ id: string }>();
-  const [article, setArticle] = useState<Article | null>(null);
+  const [title, setTitle] = useState<string>("");
+  const [content, setContent] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
   const [status, setStatus] = useState<Status>(Status.Unknown);
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [action, setAction] = useState<string>("");
+  const [actionError, setActionError] = useState<string>("");
+  const [actionState, setActionState] = useState<ActionState>(ActionState.None);
 
   useEffect(() => {
-    const a = fakeArticles.find((article) => article.id === id);
-    if (!a) {
+    if (!id) {
       return;
     }
 
-    setArticle(a);
-    setStatus(article_status(a.status));
+    setLoading(true);
+
+    getArticle(id)
+      .then((rs) => {
+        const { title, content, description, status } = rs.data;
+
+        setTitle(title);
+        setContent(content);
+        setDescription(description);
+        setStatus(article_status(status));
+
+        setError("");
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [id]);
-
-  useEffect(() => {
-    if (!article) {
-      return;
-    }
-  }, [article]);
-
-  if (!article) {
-    return <div>Loading...</div>;
-  }
 
   const changeTitle = (event: ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
-    setArticle({ ...article, title: value });
+    setTitle(value);
+  };
+
+  const changeDescription = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const { value } = event.target;
+    setDescription(value);
   };
 
   const onContentChange = (content: string) => {
-    setArticle({ ...article, content });
+    setContent(content);
   };
+
+  const saveAction = () => {
+    if (!id) {
+      return;
+    }
+
+    setActionState(ActionState.Active);
+    setAction("Saving");
+
+    updateArticle(id, {title, content, description})
+      .then(() => {
+        setActionState(ActionState.Success);
+      }).catch((err) => {
+        setActionState(ActionState.Error);
+        setActionError(err.message);
+      });
+  };
+
+  const statusAction = (status: Status, action: ChangeStatusType) => () => {
+    if (!id) {
+      return;
+    }
+
+    setAction("Change Status");
+    setActionState(ActionState.Active);
+
+    action(id)
+      .then(() => {
+        setActionState(ActionState.Success);
+        setStatus(status)
+      })
+      .catch((err) => {
+        setActionState(ActionState.Error);
+        setActionError(err.message);
+      });
+  };
+
+  const publishAction = statusAction(Status.Published, publishArticle);
+
+  const draftAction = statusAction(Status.Draft, moveArticleToDraft);
+
+  const trashAction = statusAction(Status.Trash, moveArticleToTrash);
+
+  if (loading) {
+    return <SkeletonCard />;
+  }
+
+  if (error !== "") {
+    return <Alert>Error: {error}</Alert>;
+  }
 
   return (
     <div>
@@ -575,73 +752,47 @@ export function ArticleEdit() {
             type="text"
             placeholder="Enter title"
             className="border-none font-bold text-3xl text-gray-500 "
-            value={article.title}
+            value={title}
             onChange={changeTitle}
           />
         </h1>
         <div className="flex flex-row justify-end gap-x-5 cursor-pointer">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="article-published"
-              checked={status === Status.Published}
-            />
-            <Label htmlFor="article-published">Publish</Label>
-          </div>
-          <Button variant="outline" className="bg-green-600 text-white">
+        <ActionStateMessage action={action} state={actionState} error={actionError} />
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  {status === Status.Published && (<><BookOpenCheck color="green" /><span className="text-green" >Published</span></>)}
+                  {status === Status.Draft && (<><NotebookPen /><span>Draft</span></>)}  
+                  {status === Status.Trash && (<><Trash2 color="red" /><span className="text-red" >Trash</span></>)}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={publishAction}>
+                  <BookOpenText color="green" />
+                  Published
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={draftAction}>
+                  <NotebookPen />
+                  Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={trashAction}>
+                  <Trash2 color="red" />
+                  Trash
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" onMouseUp={saveAction} className="bg-green-600 text-white">
             <Save /> Save
           </Button>
-          {status !== Status.Trash && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 color="white" /> Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Are you sure you want to delete this article?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    The article will be unpublished and moved to trash. You can
-                    restore this later if you want.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          {status === Status.Trash && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">
-                  <Recycle /> Restore
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Are you sure you want to restore this article?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    The article will be moved to draft state. You can publish
-                    this later if you want.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Restore</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
         </div>
       </div>
+      <div className="mt-4 flex flex-col gap-2">
+        <Label htmlFor="article-description">Description</Label>
+        <Textarea placeholder="description" id="article-description" value={description} onChange={changeDescription}></Textarea>
+      </div>
       <div className="mt-4">
-        <Editor onChange={onContentChange} content={article.content} />
+        <Editor onChange={onContentChange} content={content} />
       </div>
     </div>
   );
@@ -661,5 +812,5 @@ function Editor({
     onChange(v);
   };
 
-  return <ReactQuill theme="snow" value={value} onChange={onChanged} />;
+  return <ReactQuill value={value} onChange={onChanged} />;
 }

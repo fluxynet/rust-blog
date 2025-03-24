@@ -52,7 +52,7 @@ const createArticle = <TData = AxiosResponse<ArticleResponse>>(
  * Get a specific article
  */
 const getArticle = <TData = AxiosResponse<ArticleResponse>>(
-    id: number, options?: AxiosRequestConfig
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.get(
       `/api/articles/${id}`,options
@@ -63,7 +63,7 @@ const getArticle = <TData = AxiosResponse<ArticleResponse>>(
  * Permanently delete article
  */
 const deleteArticle = <TData = AxiosResponse<void>>(
-    id: number, options?: AxiosRequestConfig
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.delete(
       `/api/articles/${id}`,options
@@ -74,7 +74,7 @@ const deleteArticle = <TData = AxiosResponse<void>>(
  * Update article content
  */
 const updateArticle = <TData = AxiosResponse<void>>(
-    id: number,
+    id: string,
     articleRequest: ArticleRequest, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.patch(
@@ -87,7 +87,7 @@ const updateArticle = <TData = AxiosResponse<void>>(
  * Set article to draft
  */
 const moveArticleToDraft = <TData = AxiosResponse<void>>(
-    id: number, options?: AxiosRequestConfig
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.put(
       `/api/articles/${id}/status/draft`,undefined,options
@@ -98,7 +98,7 @@ const moveArticleToDraft = <TData = AxiosResponse<void>>(
  * Publish article
  */
 const publishArticle = <TData = AxiosResponse<void>>(
-    id: number, options?: AxiosRequestConfig
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.put(
       `/api/articles/${id}/status/publish`,undefined,options
@@ -109,7 +109,7 @@ const publishArticle = <TData = AxiosResponse<void>>(
  * Move article to trash
  */
 const moveArticleToTrash = <TData = AxiosResponse<void>>(
-    id: number, options?: AxiosRequestConfig
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.default.put(
       `/api/articles/${id}/status/trash`,undefined,options

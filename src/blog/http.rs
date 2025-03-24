@@ -88,7 +88,7 @@ struct ArticlesListRequest {
         (status = 200, description = "Articles listing", body = Listing<ArticleResponse>),
     ),
     params(
-        ("id" = u64, Path, description = "List articles"),
+        ("id" = String, Path, description = "List articles"),
         ("status" = String, Query, description = "Filter by status"),
         ("status" = Option<String>, Query, description = "Filter by status"),
         ("page" = Option<i64>, Query, description = "Page number"),
@@ -135,7 +135,7 @@ pub async fn list_articles(
         (status = 200, description = "Article", body = ArticleResponse),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     )
 )]
 #[get("/api/articles/{id}")]
@@ -165,7 +165,7 @@ pub async fn get_article(
         (status = 202, description = "Article updated"),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     ),
     request_body(content=ArticleRequest, content_type = "application/json")
 )]
@@ -202,7 +202,7 @@ pub async fn update_article(
         (status = 202, description = "Article published"),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     ),
 )]
 #[put("/api/articles/{id}/status/publish")]
@@ -232,7 +232,7 @@ pub async fn publish_article(
         (status = 202, description = "Article sent to trash"),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     ),
 )]
 #[put("/api/articles/{id}/status/trash")]
@@ -262,7 +262,7 @@ pub async fn move_article_to_trash(
         (status = 202, description = "Article set to draft"),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     ),
 )]
 #[put("/api/articles/{id}/status/draft")]
@@ -292,7 +292,7 @@ pub async fn move_article_to_draft(
         (status = 202, description = "Article deleted"),
     ),
     params(
-        ("id" = u64, Path, description = "Article id"),
+        ("id" = String, Path, description = "Article id"),
     ),
 )]
 #[delete("/api/articles/{id}")]
