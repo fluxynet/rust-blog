@@ -1,6 +1,7 @@
 mod auth;
 mod blog;
 mod errors;
+mod logs;
 mod web;
 
 use clap::{Parser, Subcommand};
@@ -12,6 +13,7 @@ use utoipa::OpenApi;
 struct Config {
     base_url: String,
     dsn: String,
+    loki: String,
     auth: AuthConfig,
     admin: AdminConfig,
 }
@@ -24,7 +26,6 @@ struct AuthConfig {
 
     gh_client_id: String,
     gh_client_secret: String,
-    gh_org: String,
 
     cookie: String,
 }
@@ -68,6 +69,11 @@ async fn main() -> std::io::Result<()> {
         Ok(c) => c,
     };
 
+    tracing_subscriber::fmt::init();
+
+    // let logtask = crate::logs::loki(config.loki.clone());
+    // tokio::spawn(logtask);
+
     let cli = Cli::parse();
     match &cli.command {
         Commands::Auth => auth_service(&config).await.unwrap(),
@@ -90,7 +96,6 @@ async fn auth_service(config: &Config) -> std::io::Result<()> {
             repo.clone(),
             config.auth.gh_client_id.clone(),
             config.auth.gh_client_secret.clone(),
-            config.auth.gh_org.clone(),
             config.base_url.clone(),
         )
         .unwrap(),

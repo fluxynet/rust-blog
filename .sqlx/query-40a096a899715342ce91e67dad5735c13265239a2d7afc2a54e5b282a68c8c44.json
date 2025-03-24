@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE blog.articles SET title = $1, description = $2, content = $3, updated_at = $4 WHERE id = $5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "40a096a899715342ce91e67dad5735c13265239a2d7afc2a54e5b282a68c8c44"
+}

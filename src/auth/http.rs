@@ -2,6 +2,7 @@ use super::{Authenticator, SessionManager, User};
 use crate::errors::Error;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, cookie::Cookie, get, web};
 use serde::Deserialize;
+use tracing_actix_web::TracingLogger;
 use std::sync::Arc;
 
 struct State {
@@ -26,7 +27,7 @@ pub async fn load_user(
     Err(Error::PermissionDenied("no session found".to_string()))
 }
 
-#[get("/auth/login")]
+#[get("/api/auth/login")]
 async fn login(state: web::Data<State>) -> impl Responder {
     match state.auth.start_login().await {
         Err(err) => err.to_http_response(),
@@ -41,7 +42,7 @@ struct LoginCallback {
     code: String,
 }
 
-#[get("/auth/login/callback")]
+#[get("/api/auth/login/callback")]
 async fn login_callback(
     state: web::Data<State>,
     query: web::Query<LoginCallback>,
@@ -62,7 +63,7 @@ async fn login_callback(
     }
 }
 
-#[get("/auth/logout")]
+#[get("/api/auth/logout")]
 async fn logout(state: web::Data<State>, req: HttpRequest) -> impl Responder {
     if let Some(cookie) = req.cookie(&state.cookie_name) {
         match state.sessions.logout(cookie.value().to_string()).await {
@@ -75,14 +76,14 @@ async fn logout(state: web::Data<State>, req: HttpRequest) -> impl Responder {
 }
 
 #[utoipa::path(get, 
-    path = "/auth/me", 
+    path = "/api/auth/me", 
     description = "Get current user status",
     tag = "auth",
     responses(
         (status = 200, description = "Current logged in user", body = User)
     ),
 )]
-#[get("/auth/me")]
+#[get("/api/auth/me")]
 pub async fn me(state: web::Data<State>, req: HttpRequest) -> impl Responder {
     match load_user(req, &state.sessions, state.cookie_name.as_str()).await {
         Ok(user) => HttpResponse::Ok().json(user),
@@ -107,6 +108,7 @@ pub async fn server(
     HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
+            .wrap(TracingLogger::default())
             .service(login)
             .service(login_callback)
             .service(logout)

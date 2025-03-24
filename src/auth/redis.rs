@@ -58,10 +58,10 @@ impl Repo for RedisRepo {
             Err(err) => return Err(Error::ConnectionError(err.to_string())),
         };
 
-        let data: String = match con.get(token).await {
-            Ok(v) => v,
-            Err(err) => return Err(Error::ConnectionError(err.to_string())),
-        };
+        let data: String = con
+            .get(token)
+            .await
+            .map_err(|_| Error::PermissionDenied("no session".to_string()))?;
 
         let segments: Vec<&str> = data.splitn(4, '|').collect();
         if segments.len() != 4 {

@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO blog.articles (id, title, description, content, updated_at, created_at, status, author) \n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d0e303f285febf214c70c3ca63343cfe58a95fdf4cf6ec333610cee9574c58dc"
+}

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, title, description, content, updated_at, created_at, status, author\n            FROM blog.articles WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "author",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9faec4c789a7b4b3d912267340856bd8dbdf177809928951202c3bf6b9845ef3"
+}

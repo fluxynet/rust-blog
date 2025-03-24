@@ -7,6 +7,7 @@ use actix_web::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
+use tracing_actix_web::TracingLogger;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -41,7 +42,7 @@ pub struct ArticleResponse {
 
 #[utoipa::path(
     post,
-    path = "/articles",
+    path = "/api/articles",
     description = "Create a new article",
     tag = "blog",
     responses(
@@ -49,7 +50,7 @@ pub struct ArticleResponse {
     ),
     request_body(content=ArticleRequest, content_type = "application/json")
 )]
-#[post("/articles")]
+#[post("/api/articles")]
 pub async fn create_article(
     state: web::Data<State>,
     req: HttpRequest,
@@ -80,7 +81,7 @@ struct ArticlesListRequest {
 
 #[utoipa::path(
     get,
-    path = "/articles",
+    path = "/api/articles",
     description = "List articles",
     tag = "blog",
     responses(
@@ -90,7 +91,7 @@ struct ArticlesListRequest {
         ("id" = u64, Path, description = "List articles"),
     )
 )]
-#[get("/articles")]
+#[get("/api/articles")]
 pub async fn list_articles(
     state: web::Data<State>,
     req: HttpRequest,
@@ -118,7 +119,7 @@ pub async fn list_articles(
 
 #[utoipa::path(
     get,
-    path = "/articles/{id}",
+    path = "/api/articles/{id}",
     description = "Get a specific article",
     tag = "blog",
     responses(
@@ -128,7 +129,7 @@ pub async fn list_articles(
         ("id" = u64, Path, description = "Article id"),
     )
 )]
-#[get("/articles/{id}")]
+#[get("/api/articles/{id}")]
 pub async fn get_article(
     state: web::Data<State>,
     req: HttpRequest,
@@ -148,7 +149,7 @@ pub async fn get_article(
 
 #[utoipa::path(
     patch,
-    path = "/articles/{id}",
+    path = "/api/articles/{id}",
     description = "Update article content",
     tag = "blog",
     responses(
@@ -159,7 +160,7 @@ pub async fn get_article(
     ),
     request_body(content=ArticleRequest, content_type = "application/json")
 )]
-#[patch("/articles/{id}")]
+#[patch("/api/articles/{id}")]
 pub async fn update_article(
     state: web::Data<State>,
     req: HttpRequest,
@@ -185,7 +186,7 @@ pub async fn update_article(
 
 #[utoipa::path(
     put,
-    path = "/articles/{id}/status/publish",
+    path = "/api/articles/{id}/status/publish",
     description = "Publish article",
     tag = "blog",
     responses(
@@ -195,7 +196,7 @@ pub async fn update_article(
         ("id" = u64, Path, description = "Article id"),
     ),
 )]
-#[put("/articles/{id}/status/publish")]
+#[put("/api/articles/{id}/status/publish")]
 pub async fn publish_article(
     state: web::Data<State>,
     req: HttpRequest,
@@ -215,7 +216,7 @@ pub async fn publish_article(
 
 #[utoipa::path(
     put,
-    path = "/articles/{id}/status/trash",
+    path = "/api/articles/{id}/status/trash",
     description = "Move article to trash",
     tag = "blog",
     responses(
@@ -225,7 +226,7 @@ pub async fn publish_article(
         ("id" = u64, Path, description = "Article id"),
     ),
 )]
-#[put("/articles/{id}/status/trash")]
+#[put("/api/articles/{id}/status/trash")]
 pub async fn move_article_to_trash(
     state: web::Data<State>,
     req: HttpRequest,
@@ -245,7 +246,7 @@ pub async fn move_article_to_trash(
 
 #[utoipa::path(
     put,
-    path = "/articles/{id}/status/draft",
+    path = "/api/articles/{id}/status/draft",
     description = "Set article to draft",
     tag = "blog",
     responses(
@@ -255,7 +256,7 @@ pub async fn move_article_to_trash(
         ("id" = u64, Path, description = "Article id"),
     ),
 )]
-#[put("/articles/{id}/status/draft")]
+#[put("/api/articles/{id}/status/draft")]
 pub async fn move_article_to_draft(
     state: web::Data<State>,
     req: HttpRequest,
@@ -275,7 +276,7 @@ pub async fn move_article_to_draft(
 
 #[utoipa::path(
     delete,
-    path = "/articles/{id}",
+    path = "/api/articles/{id}",
     description = "Permanently delete article",
     tag = "blog",
     responses(
@@ -285,7 +286,7 @@ pub async fn move_article_to_draft(
         ("id" = u64, Path, description = "Article id"),
     ),
 )]
-#[delete("/articles/{id}")]
+#[delete("/api/articles/{id}")]
 pub async fn delete_article(
     state: web::Data<State>,
     req: HttpRequest,
@@ -318,6 +319,7 @@ pub async fn server(
     HttpServer::new(move || {
         App::new()
             .app_data(data.clone())
+            .wrap(TracingLogger::default())
             .service(create_article)
             .service(list_articles)
             .service(get_article)
