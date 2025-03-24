@@ -1,11 +1,13 @@
 use super::Admin;
 use crate::auth::{SessionManager, http::load_user};
 use crate::blog::ArticlesListOptions;
+use crate::web::Listing;
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder, delete, get, patch, post, put, web,
 };
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 struct State {
@@ -14,15 +16,41 @@ struct State {
     cookie_name: String,
 }
 
-#[derive(Deserialize)]
-struct ArticleRequest {
+#[derive(Deserialize, ToSchema)]
+pub struct ArticleRequest {
     title: String,
     description: String,
     content: String,
 }
 
+// This is to allow openapi schema to be derived using utoipa
+// because of incompatible types Uuid and DateTime present in Article
+// this matches Article so no conversion needed.
+#[allow(dead_code)]
+#[derive(ToSchema)]
+pub struct ArticleResponse {
+    id: String,
+    title: String,
+    description: String,
+    content: String,
+    updated_at: String,
+    created_at: String,
+    status: String,
+    author: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/articles",
+    description = "Create a new article",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article added", body = ArticleResponse),
+    ),
+    request_body(content=ArticleRequest, content_type = "application/json")
+)]
 #[post("/articles")]
-async fn create_article(
+pub async fn create_article(
     state: web::Data<State>,
     req: HttpRequest,
     body: web::Json<ArticleRequest>,
@@ -44,14 +72,26 @@ async fn create_article(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct ArticlesListRequest {
     status: Option<String>,
     page: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/articles",
+    description = "List articles",
+    tag = "blog",
+    responses(
+        (status = 200, description = "Articles listing", body = Listing<ArticleResponse>),
+    ),
+    params(
+        ("id" = u64, Path, description = "List articles"),
+    )
+)]
 #[get("/articles")]
-async fn list_articles(
+pub async fn list_articles(
     state: web::Data<State>,
     req: HttpRequest,
     query: web::Query<ArticlesListRequest>,
@@ -76,8 +116,20 @@ async fn list_articles(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/articles/{id}",
+    description = "Get a specific article",
+    tag = "blog",
+    responses(
+        (status = 200, description = "Article", body = ArticleResponse),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    )
+)]
 #[get("/articles/{id}")]
-async fn get_article(
+pub async fn get_article(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,
@@ -94,8 +146,21 @@ async fn get_article(
     }
 }
 
+#[utoipa::path(
+    patch,
+    path = "/articles/{id}",
+    description = "Update article content",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article updated"),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    ),
+    request_body(content=ArticleRequest, content_type = "application/json")
+)]
 #[patch("/articles/{id}")]
-async fn update_article(
+pub async fn update_article(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,
@@ -118,8 +183,20 @@ async fn update_article(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/articles/{id}/status/publish",
+    description = "Publish article",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article published"),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    ),
+)]
 #[put("/articles/{id}/status/publish")]
-async fn publish_article(
+pub async fn publish_article(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,
@@ -136,8 +213,20 @@ async fn publish_article(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/articles/{id}/status/trash",
+    description = "Move article to trash",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article sent to trash"),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    ),
+)]
 #[put("/articles/{id}/status/trash")]
-async fn move_article_to_trash(
+pub async fn move_article_to_trash(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,
@@ -154,8 +243,20 @@ async fn move_article_to_trash(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/articles/{id}/status/draft",
+    description = "Set article to draft",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article set to draft"),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    ),
+)]
 #[put("/articles/{id}/status/draft")]
-async fn move_article_to_draft(
+pub async fn move_article_to_draft(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,
@@ -172,8 +273,20 @@ async fn move_article_to_draft(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/articles/{id}",
+    description = "Permanently delete article",
+    tag = "blog",
+    responses(
+        (status = 202, description = "Article deleted"),
+    ),
+    params(
+        ("id" = u64, Path, description = "Article id"),
+    ),
+)]
 #[delete("/articles/{id}")]
-async fn delete_article(
+pub async fn delete_article(
     state: web::Data<State>,
     req: HttpRequest,
     path: web::Path<(Uuid,)>,

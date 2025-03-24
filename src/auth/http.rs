@@ -3,6 +3,7 @@ use crate::errors::Error;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, cookie::Cookie, get, web};
 use serde::Deserialize;
 use std::sync::Arc;
+
 struct State {
     sessions: Arc<dyn SessionManager>,
     auth: Arc<dyn Authenticator>,
@@ -69,12 +70,20 @@ async fn logout(state: web::Data<State>, req: HttpRequest) -> impl Responder {
             Err(err) => err.to_http_response(),
         }
     } else {
-        HttpResponse::Unauthorized().body("No session ID found in cookies")
+        HttpResponse::Ok().finish()
     }
 }
 
-#[get("/api/auth/me")]
-async fn me(state: web::Data<State>, req: HttpRequest) -> impl Responder {
+#[utoipa::path(get, 
+    path = "/auth/me", 
+    description = "Get current user status",
+    tag = "auth",
+    responses(
+        (status = 200, description = "Current logged in user", body = User)
+    ),
+)]
+#[get("/auth/me")]
+pub async fn me(state: web::Data<State>, req: HttpRequest) -> impl Responder {
     match load_user(req, &state.sessions, state.cookie_name.as_str()).await {
         Ok(user) => HttpResponse::Ok().json(user),
         Err(err) => err.to_http_response(),

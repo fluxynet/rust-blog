@@ -3,10 +3,11 @@ mod blog;
 mod errors;
 mod web;
 
+use clap::{Parser, Subcommand};
 use serde::Deserialize;
-use std::env;
 use std::sync::Arc;
 use tokio::fs;
+use utoipa::OpenApi;
 #[derive(Deserialize)]
 struct Config {
     base_url: String,
@@ -41,10 +42,23 @@ async fn read_config(path: &str) -> Result<Config, ()> {
     Ok(config)
 }
 
-enum Command {
-    Help,
+#[derive(Parser, Debug)]
+#[command(name = "blog", about = "📰 Blog.")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
     Auth,
     Admin,
+
+    OpenApi {
+        /// write to file
+        #[arg(short, long)]
+        write: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -54,31 +68,14 @@ async fn main() -> std::io::Result<()> {
         Ok(c) => c,
     };
 
-    let args: Vec<String> = env::args().collect();
-    let command = match args.get(1).map(|s| s.as_str()) {
-        Some("auth") => Command::Auth,
-        Some("admin") => Command::Admin,
-        _ => Command::Help,
-    };
-
-    match command {
-        Command::Help => help(),
-        Command::Auth => auth_service(&config).await.unwrap(),
-        Command::Admin => admin_service(&config).await.unwrap(),
+    let cli = Cli::parse();
+    match &cli.command {
+        Commands::Auth => auth_service(&config).await.unwrap(),
+        Commands::Admin => admin_service(&config).await.unwrap(),
+        Commands::OpenApi { write } => openapi(write.clone()).await.unwrap(),
     }
 
     Ok(())
-}
-
-fn help() {
-    println!("📰 blog");
-    println!("usage: blog [command]");
-    println!("");
-    println!("available commands:");
-    println!("\t👤 auth  - start the auth service");
-    println!("\t💼 admin - start the admin service");
-    println!("\t📔 help  - information");
-    println!("");
 }
 
 async fn auth_service(config: &Config) -> std::io::Result<()> {
@@ -145,6 +142,17 @@ async fn admin_service(config: &Config) -> std::io::Result<()> {
     )
     .await
     .unwrap();
+
+    Ok(())
+}
+
+async fn openapi(path: Option<String>) -> std::io::Result<()> {
+    let path = path.unwrap_or_else(|| "openapi.json".to_string());
+
+    let doc = web::openapi::Doc::openapi().to_pretty_json().unwrap();
+
+    fs::write(&path, doc).await.unwrap();
+    println!("✅ OpenAPI documentation generated at {}", path);
 
     Ok(())
 }

@@ -1,0 +1,414 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "blog",
+    "description": "Blog API",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/articles": {
+      "get": {
+        "tags": [
+          "blog"
+        ],
+        "description": "List articles",
+        "operationId": "list_articles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "List articles",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Articles listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing_ArticleResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Create a new article",
+        "operationId": "create_article",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Article added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/articles/{id}": {
+      "get": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Get a specific article",
+        "operationId": "get_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Permanently delete article",
+        "operationId": "delete_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Article deleted"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Update article content",
+        "operationId": "update_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Article updated"
+          }
+        }
+      }
+    },
+    "/articles/{id}/status/draft": {
+      "put": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Set article to draft",
+        "operationId": "move_article_to_draft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Article set to draft"
+          }
+        }
+      }
+    },
+    "/articles/{id}/status/publish": {
+      "put": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Publish article",
+        "operationId": "publish_article",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Article published"
+          }
+        }
+      }
+    },
+    "/articles/{id}/status/trash": {
+      "put": {
+        "tags": [
+          "blog"
+        ],
+        "description": "Move article to trash",
+        "operationId": "move_article_to_trash",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Article id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Article sent to trash"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "description": "Get current user status",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "Current logged in user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArticleRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ArticleResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "content",
+          "updated_at",
+          "created_at",
+          "status",
+          "author"
+        ],
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "Listing_ArticleResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "pages"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "description",
+                "content",
+                "updated_at",
+                "created_at",
+                "status",
+                "author"
+              ],
+              "properties": {
+                "author": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "updated_at": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pages": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatar_url",
+          "login"
+        ],
+        "properties": {
+          "avatar_url": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "login": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

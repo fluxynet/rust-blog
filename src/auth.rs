@@ -5,12 +5,13 @@ use mockall::predicate::*;
 use mockall::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use utoipa::ToSchema;
 
 pub mod github;
 pub mod http;
 pub mod redis;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema)]
 pub struct User {
     pub id: u64,
     pub name: String,
