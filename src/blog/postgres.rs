@@ -184,7 +184,7 @@ impl Repo for PostgresRepo {
         if exists.exists.unwrap_or(false) {
             Ok(())
         } else {
-            Err(Error::NotFound(format!("article {} not found", id)))
+            Err(Error::NotFound(format!("article {}", id)))
         }
     }
 

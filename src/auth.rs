@@ -1,6 +1,5 @@
 use crate::errors::Error;
 use async_trait::async_trait;
-
 use mockall::predicate::*;
 use mockall::*;
 use serde::{Deserialize, Serialize};
@@ -103,7 +102,7 @@ mod default_session_manager_test {
         let mut mock_repo = MockRepo::new();
         mock_repo
             .expect_get()
-            .returning(|_| Err(Error::NotFound("session not found".to_string())));
+            .returning(|_| Err(Error::PermissionDenied("no session".to_string())));
 
         let repo = Arc::new(mock_repo);
         let session_manager = DefaultSessionManager::new(repo);
@@ -111,7 +110,10 @@ mod default_session_manager_test {
         let token = "invalid_token".to_string();
         let result = session_manager.session(token).await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "session not found");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "permission denied: no session"
+        );
     }
 
     #[tokio::test]
