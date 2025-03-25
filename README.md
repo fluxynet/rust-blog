@@ -4,16 +4,21 @@ This is a microservice to handle the authentication process.
 Authentication is done using Github login.
 It handles the Github flow, store relevant data in keydb.
 
-It checks that the user belongs to a specific organization before allowing access.
-It communicates via Kafka to provide user information to other services, given a token.
+## API
 
-# Articles API
+| Method | Path                     | Description                                        |
+| ------ | ------------------------ | -------------------------------------------------- |
+| GET    | /api/auth/login          | Starts the login flow, redirects to github         |
+| GET    | /api/auth/login/callback | Callback from github, creates a session and cookie |
+| GET    | /api/auth/logout         | Deletes the cookie and session                     |
+| GET    | /api/auth/me             | Returns the user data based on cookie              |
+
+# Articles
 
 The API is a RESTful API meant for the admin backoffice.
-The entities are:
+The only entity is `article`
 
 - Article
-- Section
 
 An article can have multiple sections.
 
@@ -21,80 +26,75 @@ The database schema is:
 
 ## articles
 
-| Field        | Type      | Description                              |
-| ------------ | --------- | ---------------------------------------- |
-| id           | UUID      | Unique identifier                        |
-| title        | String    | Title of the article                     |
-| slug         | String    | URL friendly title                       |
-| author       | String    | Author of the article                    |
-| created_at   | Timestamp | Date the article was created             |
-| updated_at   | Timestamp | Date the article was last updated        |
-| published_at | Timestamp | Date the article was published           |
-| status       | String    | Status of the article (draft, published) |
+The schema is as follows:
 
-## sections
-
-| Field      | Type    | Description                            |
-| ---------- | ------- | -------------------------------------- |
-| id         | UUID    | Unique identifier                      |
-| article_id | UUID    | Article the section belongs to         |
-| kind       | String  | Type of section (text, image, code)    |
-| content    | String  | Content of the section                 |
-| position   | Integer | Position of the section in the article |
-
-## published_articles
-
-| Field        | Type      | Description                       |
-| ------------ | --------- | --------------------------------- |
-| id           | UUID      | Unique identifier                 |
-| article_id   | UUID      | Article the section belongs to    |
-| title        | String    | Title of the article              |
-| slug         | String    | URL friendly title                |
-| author       | String    | Author of the article             |
-| created_at   | Timestamp | Date the article was created      |
-| updated_at   | Timestamp | Date the article was last updated |
-| published_at | Timestamp | Date the article was published    |
-| content      | String    | Content of the article            |
+| Field       | Type        | Description                                     |
+| ----------- | ----------- | ----------------------------------------------- |
+| id          | UUID        | Primary key                                     |
+| title       | TEXT        | Title of the article                            |
+| description | TEXT        | Description of the article                      |
+| content     | TEXT        | Content of the article                          |
+| updated_at  | TIMESTAMPTZ | Timestamp of the last update                    |
+| created_at  | TIMESTAMPTZ | Timestamp of creation                           |
+| status      | TEXT        | Status of the article (published, draft, trash) |
+| author      | TEXT        | Author of the article                           |
 
 The API has the following endpoints:
 
-- GET /articles
-- POST /articles
-- GET /articles/:id
-- DELETE /articles/:id
-- PATCH /articles/:id
-- GET /articles/:id/sections
-- POST /articles/:id/sections
-- DELETE /articles/:id/sections/:sectionId
-- PUT /articles/:id/sections/:sectionId
+| Method | Path                              | Description                |
+| ------ | --------------------------------- | -------------------------- |
+| POST   | /api/articles                     | Create a new article       |
+| GET    | /api/articles                     | List articles              |
+| GET    | /api/articles/{id}                | Get a specific article     |
+| PATCH  | /api/articles/{id}                | Update article content     |
+| PUT    | /api/articles/{id}/status/publish | Publish article            |
+| PUT    | /api/articles/{id}/status/trash   | Move article to trash      |
+| PUT    | /api/articles/{id}/status/draft   | Set article to draft       |
+| DELETE | /api/articles/{id}                | Permanently delete article |
 
-Data is read from Postgres database.
-Mutations trigger events to Kafka.
+# Code Structure
 
-# Images API
+The application is a mono-repo and can provide multiple services.
 
-The API is a RESTful API.
-The main entity is:
+The code is structured as follows:
 
-- Image
+| Module | Description     |
+| ------ | --------------- |
+| auth   | authentication  |
+| blog   | blog articles   |
+| errors | error handling  |
+| logs   | logging         |
+| web    | common web code |
 
-- GET /articles/:id/images
-- POST /articles/:id/images
-- GET /articles/:id/images/:imageId
-- DELETE /articles/:id/images/:imageId
-- GET /images
+Sub packages exist to implement traits as needed.
 
-# Blogs Service
+# Running
 
-This is an async service.
-It listens to events from Kafka.
+The application can be executed using the following command:
 
-Events are supported:
+```sh
+./blog [subcommand]
+```
 
-- ArticleSaved: When an article is saved, the data is saved in the database.
-- ArticleDeleted: When an article is deleted, the data is deleted from the database.
-- ArticlePublished: When an article is published, the blog is regenerated.
+where `subcommand` is one of the following:
 
-# Admin Service
+- auth: starts the authentication service
+- admin: starts the admin service
+- open-api: generates openapi documentation
 
-This will be
+The application requires a configuration file: `config.toml`, an example is provided in the repository.
+The file need to be in the current working directory.
+
+A dockerfile is provide to build the application as a container.
+A docker-compose file is provided to start the application with necessary services.
+
+# Frontend
+
+The frontend is a simple React application that uses the API to manage articles.
+For convenience, the frontend code is included in this repository as `apps/admin`.
+
+It uses react-router and shadcn component library.
+
+The frontend dockerfile is provided in `apps/admin/Dockerfile`.
+It is a multi-stage build that builds the frontend and serves it using nginx.
+

@@ -48,13 +48,13 @@ services:
       - ./migrations:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
 
-  loki:
-    image: grafana/loki:3.4
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki_data:/loki
+  # loki:
+  #   image: grafana/loki:3.4
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   ports:
+  #     - "3100:3100"
+  #   volumes:
+  #     - loki_data:/loki
 
   # prometheus:
   #   image: prom/prometheus:v3.2.1
@@ -64,14 +64,14 @@ services:
   #     - prometheus_data:/prometheus
   #     - ./.local/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
-  grafana:
-    image: grafana/grafana:10.0.0
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - ./.local/grafana/provisioning:/etc/grafana/provisioning
+  # grafana:
+  #   image: grafana/grafana:10.0.0
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #   volumes:
+  #     - ./.local/grafana/provisioning:/etc/grafana/provisioning
 
   nginx:
     image: nginx:1.27.4
@@ -93,6 +93,6 @@ services:
 volumes:
   crates_data:
   postgres_data:
-  loki_data:
-  prometheus_data:
   keydb_data:
+  # loki_data:
+  # prometheus_data:
